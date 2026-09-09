@@ -1,11 +1,5 @@
-/**
- * NearbyFeed.jsx — Discovery Screen
- * Features 2-button view toggle (List & Map), top right Emirate/City & Distance filters,
- * category chip bar, and an endless "Popular Near You" grid with infinite scroll.
- */
-
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Search, MapPin, List, Map as MapIcon, Star, Bell, ExternalLink } from 'lucide-react';
+import { Search, MapPin, List, Map as MapIcon, Star, Bell, ExternalLink, SlidersHorizontal, Heart, X } from 'lucide-react';
 import { useGeolocation } from '../hooks/useGeolocation.js';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 import { getCachedPlaces, getSavedPlaceIds, savePlaceLocally, unsavePlaceLocally, getVisitedPlaceIds } from '../lib/db.js';
@@ -44,6 +38,7 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
   const [selectedCity, setSelectedCity] = useState('all');
   const [selectedDistance, setSelectedDistance] = useState('all');
   const [view, setView] = useState('list'); // 'list' vs 'map'
+  const [showFilterModal, setShowFilterModal] = useState(false);
   
   // Infinite Scroll Pagination
   const [page, setPage] = useState(1);
@@ -245,81 +240,135 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
 
   return (
     <div className="app-shell__content">
-      {/* ─── Top Hero Header Banner ─── */}
-      <TrendingTicker onNavigateToPlace={onNavigateToPlace} onNavigateToGroup={onNavigateToGroup} />
-
-      {/* ─── Search Bar & Top Right Filters (Emirate, Radius, Bell) ─── */}
-      <div className="nearby-controls" style={{ marginBottom: '20px' }}>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-          {/* Search Input */}
-          <div style={{ flex: '1 1 240px', position: 'relative' }}>
+      {/* ─── 3 Distinct Visual Bands at Top of Screen ─── */}
+      <div style={{ marginBottom: '20px' }}>
+        {/* Band a: Search bar (full width) + single Filter icon button */}
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <div style={{ flex: 1, position: 'relative' }}>
             <Search size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
             <input
-              className="neo-input neo-input--large"
+              className="neo-input"
               type="text"
-              placeholder="Search cafes, rooftop bars, viewing decks..."
+              placeholder="Search cafes, rooftop bars, beaches..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              style={{ paddingLeft: '42px', height: '46px', fontSize: '14px' }}
+              style={{ paddingLeft: '42px', height: '48px', fontSize: '15px', borderRadius: '10px' }}
             />
           </div>
 
-          {/* Emirate / City Filter Dropdown */}
-          <select
-            className="neo-input"
-            value={selectedCity}
-            onChange={e => setSelectedCity(e.target.value)}
-            style={{ height: '46px', fontSize: '13px', fontWeight: 800, minWidth: '120px', cursor: 'pointer', backgroundColor: 'var(--color-cream)' }}
+          <button
+            className="neo-btn neo-btn--secondary neo-btn--icon"
+            onClick={() => setShowFilterModal(true)}
+            style={{ width: '48px', height: '48px', flexShrink: 0, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '10px' }}
+            title="Filter Options"
           >
-            <option value="all">📍 All UAE Cities</option>
-            <option value="Dubai">🏙️ Dubai</option>
-            <option value="Abu Dhabi">🕌 Abu Dhabi</option>
-            <option value="Sharjah">🏛️ Sharjah</option>
-            <option value="Ras Al Khaimah">⛰️ Ras Al Khaimah</option>
-          </select>
-
-          {/* Distance Radius Filter Dropdown */}
-          <select
-            className="neo-input"
-            value={selectedDistance}
-            onChange={e => setSelectedDistance(e.target.value)}
-            style={{ height: '46px', fontSize: '13px', fontWeight: 800, minWidth: '120px', cursor: 'pointer', backgroundColor: 'var(--color-cream)' }}
-          >
-            {DISTANCES.map(d => (
-              <option key={d.val} value={d.val}>{d.label}</option>
-            ))}
-          </select>
-
-          {/* Notification Bell */}
-          <button 
-            className="neo-btn neo-btn--ghost neo-btn--icon"
-            style={{ width: '46px', height: '46px', background: 'var(--color-cream)', flexShrink: 0, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-            onClick={() => {
-              if (notificationStatus === 'default') {
-                setShowNotificationPrompt(true);
-              }
-            }}
-            title="Enable Notifications"
-          >
-            <Bell size={20} color={notificationStatus === 'granted' ? 'var(--color-purple)' : 'var(--text-primary)'} />
+            <SlidersHorizontal size={20} color="var(--text-primary)" />
           </button>
         </div>
 
-        {/* Category Filter Chips Bar */}
-        <div className="category-chips-wrapper" style={{ marginTop: '12px' }}>
-          <div className="category-chips">
+        {/* Band b: One line of current context text (city + radius) with a Change link */}
+        <div style={{ marginTop: '8px', fontSize: '13px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span>📍 {selectedCity === 'all' ? 'All UAE Cities' : selectedCity}</span>
+          <span>•</span>
+          <span>{DISTANCES.find(d => d.val === selectedDistance)?.label || 'Any Radius'}</span>
+          <button
+            onClick={() => setShowFilterModal(true)}
+            style={{ background: 'none', border: 'none', color: 'var(--text-primary)', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', marginLeft: '4px' }}
+          >
+            Change
+          </button>
+        </div>
+
+        {/* Band c: Category filter chips as ONE horizontally scrollable pill row */}
+        <div className="category-chips-wrapper" style={{ marginTop: '12px', borderBottom: 'none', paddingBottom: 0 }}>
+          <div className="category-chips" style={{ padding: '4px 0' }}>
             {CATEGORIES.map(cat => (
               <button
                 key={cat}
                 className={`category-chip ${category === cat ? 'category-chip--active' : ''}`}
                 onClick={() => setCategory(cat)}
+                style={category === cat ? { backgroundColor: 'var(--color-yellow)', color: 'var(--color-black)', borderColor: 'var(--color-black)' } : { backgroundColor: 'var(--color-white)' }}
               >
-                {cat !== 'all' && CATEGORY_EMOJI[cat]} {cat === 'all' ? '✦ All Categories' : CATEGORY_LABELS[cat]}
+                {cat !== 'all' && CATEGORY_EMOJI[cat]} {cat === 'all' ? 'All' : CATEGORY_LABELS[cat]}
               </button>
             ))}
           </div>
         </div>
       </div>
+
+      {/* ─── Expandable Filter Panel Modal ─── */}
+      {showFilterModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+          backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, 
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-4)'
+        }}>
+          <div className="neo-card" style={{ maxWidth: '420px', width: '100%', padding: 'var(--space-6)', position: 'relative' }}>
+            <button
+              onClick={() => setShowFilterModal(false)}
+              style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', cursor: 'pointer' }}
+            >
+              <X size={20} />
+            </button>
+
+            <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '20px', fontWeight: 700, marginBottom: '16px' }}>Filter Locations</h3>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', marginBottom: '6px' }}>Emirate / City</label>
+              <select
+                className="neo-input"
+                value={selectedCity}
+                onChange={e => setSelectedCity(e.target.value)}
+                style={{ width: '100%', height: '44px', fontSize: '14px' }}
+              >
+                <option value="all">📍 All UAE Cities</option>
+                <option value="Dubai">🏙️ Dubai</option>
+                <option value="Abu Dhabi">🕌 Abu Dhabi</option>
+                <option value="Sharjah">🏛️ Sharjah</option>
+                <option value="Ras Al Khaimah">⛰️ Ras Al Khaimah</option>
+              </select>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', marginBottom: '6px' }}>Discovery Distance</label>
+              <select
+                className="neo-input"
+                value={selectedDistance}
+                onChange={e => setSelectedDistance(e.target.value)}
+                style={{ width: '100%', height: '44px', fontSize: '14px' }}
+              >
+                {DISTANCES.map(d => (
+                  <option key={d.val} value={d.val}>{d.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', backgroundColor: 'var(--color-cream)', borderRadius: '8px', marginBottom: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Bell size={18} color="var(--text-primary)" />
+                <span style={{ fontSize: '13px', fontWeight: 600 }}>Nearby Alerts</span>
+              </div>
+              <button
+                className="neo-btn neo-btn--xs neo-btn--secondary"
+                onClick={requestNotificationPermission}
+              >
+                {notificationStatus === 'granted' ? 'Enabled' : 'Enable'}
+              </button>
+            </div>
+
+            <button
+              className="neo-btn neo-btn--primary"
+              style={{ width: '100%', height: '46px', fontWeight: 700 }}
+              onClick={() => setShowFilterModal(false)}
+            >
+              Apply Filters ({filteredPlaces.length} Spots)
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Featured & Trending Section ─── */}
+      <TrendingTicker onNavigateToPlace={onNavigateToPlace} />
 
       {/* ─── Full Map View (When Map toggle selected) ─── */}
       {view === 'map' && (
@@ -332,8 +381,8 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
             marginBottom: 'var(--space-5)',
             borderRadius: '16px',
             overflow: 'hidden',
-            border: '3px solid var(--color-black)',
-            boxShadow: '6px 6px 0 var(--color-black)'
+            border: '2px solid var(--color-black)',
+            boxShadow: '4px 4px 0 var(--color-black)'
           }}
         >
           <CustomMap
@@ -374,7 +423,7 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div style={{ fontSize: '24px' }}>{CATEGORY_EMOJI[selectedLocation.category || 'outdoor']}</div>
                 <div style={{ flex: 1 }}>
-                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>{selectedLocation.name}</h3>
+                  <h3 style={{ margin: 0, fontFamily: 'var(--font-serif)', fontSize: '18px', fontWeight: 700 }}>{selectedLocation.name}</h3>
                   <div style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <span>{selectedLocation.category}</span>
                     {selectedLocation.distance !== undefined && (
@@ -395,8 +444,8 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
                   href={getActionableUrl(selectedLocation)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="neo-btn neo-btn--accent"
-                  style={{ flex: 1, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontSize: '12px', fontWeight: 900 }}
+                  className="neo-btn neo-btn--secondary"
+                  style={{ flex: 1, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontSize: '13px', fontWeight: 700 }}
                   onClick={(e) => e.stopPropagation()}
                 >
                   {getActionLabel(selectedLocation)} <ExternalLink size={12} />
@@ -407,22 +456,22 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
         </div>
       )}
 
-      {/* ─── Endless "Popular Near You" Discovery Feed (List View) ─── */}
+      {/* ─── Main Results Discovery Grid (List View) ─── */}
       {view === 'list' && (
         <div style={{ marginBottom: '32px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
-            <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 900, letterSpacing: '-0.02em' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+            <h2 style={{ margin: 0, fontFamily: 'var(--font-serif)', fontSize: '22px', fontWeight: 700 }}>
               Popular Near You ({filteredPlaces.length})
-            </h3>
-            <span style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-muted)' }}>
-              Showing {visiblePlaces.length} of {filteredPlaces.length} places
+            </h2>
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+              Showing {visiblePlaces.length} of {filteredPlaces.length} spots
             </span>
           </div>
 
           {visiblePlaces.length === 0 ? (
             <div className="empty-state">
               <div className="empty-state__icon">🔍</div>
-              <div className="empty-state__title">NO PLACES MATCH YOUR FILTERS</div>
+              <div className="empty-state__title">No spots match your filters</div>
               <div className="empty-state__desc">Try adjusting your city, radius, or category filters above!</div>
             </div>
           ) : (
@@ -433,72 +482,71 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
                 gap: '16px'
               }}
             >
-              {visiblePlaces.map(place => (
-                <div 
-                  key={place.id} 
-                  className="neo-card neo-card--clickable place-card" 
-                  style={{ padding: '12px', display: 'flex', flexDirection: 'column' }}
-                  onClick={() => onNavigateToPlace?.(place.id)}
-                >
-                  <div className="place-card__image" style={{ position: 'relative', overflow: 'hidden', height: '145px', borderRadius: '10px', border: '2px solid var(--color-black)', marginBottom: '8px' }}>
-                    <img 
-                      src={getPlaceImage(place)} 
-                      alt={place.name}
-                      onError={(e) => {
-                        e.currentTarget.onerror = null;
-                        e.currentTarget.src = 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800&auto=format&fit=crop&q=80';
-                      }}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
-                      loading="lazy"
-                    />
-                    <div 
-                      style={{
-                        position: 'absolute',
-                        top: '6px',
-                        left: '6px',
-                        backgroundColor: 'var(--color-yellow)',
-                        border: '2px solid var(--color-black)',
-                        borderRadius: '6px',
-                        padding: '2px 6px',
-                        fontSize: '10px',
-                        fontWeight: 900,
-                        boxShadow: '2px 2px 0 var(--color-black)',
-                        textTransform: 'uppercase'
-                      }}
-                    >
+              {visiblePlaces.map(place => {
+                const ctaLabel = getActionLabel(place);
+                const isSaved = savedIds.has(place.id);
+
+                return (
+                  <div 
+                    key={place.id} 
+                    className="neo-card neo-card--clickable place-card" 
+                    style={{ padding: '12px', display: 'flex', flexDirection: 'column' }}
+                    onClick={() => onNavigateToPlace?.(place.id)}
+                  >
+                    {/* Clean photo - NO category badge on photo! */}
+                    <div className="place-card__image" style={{ position: 'relative', overflow: 'hidden', height: '145px', borderRadius: '8px', border: '1.5px solid var(--color-black)', marginBottom: '10px' }}>
+                      <img 
+                        src={getPlaceImage(place)} 
+                        alt={place.name}
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800&auto=format&fit=crop&q=80';
+                        }}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
+                        loading="lazy"
+                      />
+                    </div>
+
+                    {/* Category tag moved onto white body ABOVE place name */}
+                    <div className={`category-tag category-tag--${place.category}`}>
                       {CATEGORY_EMOJI[place.category]} {place.category}
                     </div>
-                  </div>
 
-                  <div className="place-card__name" style={{ fontSize: '15px', fontWeight: 800, lineHeight: 1.2 }}>{place.name}</div>
-                  
-                  <div className="place-card__meta" style={{ marginTop: '4px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span className="place-card__rating"><Star size={12} fill="var(--color-yellow)" stroke="var(--color-black)" /> {place.rating}</span>
-                    <span style={{ color: 'var(--text-muted)' }}>•</span>
-                    <span className="place-card__distance"><MapPin size={12} /> {formatDistance(place.distance)}</span>
-                    {place.city && <><span style={{ color: 'var(--text-muted)' }}>•</span><span>{place.city}</span></>}
-                  </div>
+                    {/* Place Name in Serif Typography */}
+                    <div className="place-card__name">{place.name}</div>
+                    
+                    {/* Rating + distance + city on one line in muted metadata */}
+                    <div className="place-card__meta">
+                      <span className="place-card__rating"><Star size={12} fill="var(--color-yellow)" stroke="var(--color-black)" /> {place.rating}</span>
+                      <span>•</span>
+                      <span className="place-card__distance"><MapPin size={12} /> {formatDistance(place.distance)}</span>
+                      {place.city && <><span>•</span><span>{place.city}</span></>}
+                    </div>
 
-                  <div className="place-card__actions" style={{ marginTop: 'auto', paddingTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
-                    <a
-                      href={getActionableUrl(place)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="neo-btn neo-btn--xs neo-btn--accent"
-                      style={{ textDecoration: 'none', fontWeight: 900, padding: '4px 8px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {getActionLabel(place)} <ExternalLink size={10} />
-                    </a>
-                    <button
-                      className={`place-card__save-btn ${savedIds.has(place.id) ? 'place-card__save-btn--saved' : ''}`}
-                      onClick={(e) => { e.stopPropagation(); handleToggleSave(place.id); }}
-                    >
-                      {savedIds.has(place.id) ? '❤️' : '🤍'}
-                    </button>
+                    {/* Action Row: ONE primary button (filled, primary accent) + ONE save icon button */}
+                    <div className="place-card__actions">
+                      <a
+                        href={getActionableUrl(place)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="neo-btn neo-btn--sm neo-btn--primary"
+                        style={{ flex: 1, textDecoration: 'none', fontWeight: 700, padding: '0 12px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {ctaLabel} <ExternalLink size={12} />
+                      </a>
+                      <button
+                        className={`place-card__save-btn ${isSaved ? 'place-card__save-btn--saved' : ''}`}
+                        onClick={(e) => { e.stopPropagation(); handleToggleSave(place.id); }}
+                        title={isSaved ? 'Unsave place' : 'Save place'}
+                        aria-label="Save place"
+                      >
+                        <Heart size={18} fill={isSaved ? 'var(--color-black)' : 'none'} color="var(--color-black)" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -508,30 +556,32 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
               <button
                 className="neo-btn neo-btn--secondary"
                 onClick={() => setPage(prev => prev + 1)}
-                style={{ fontWeight: 900, padding: '10px 24px' }}
+                style={{ fontWeight: 700, padding: '10px 24px' }}
               >
-                LOAD MORE PLACES (+12)
+                Load More Places (+12)
               </button>
             </div>
           )}
         </div>
       )}
 
-      {/* ─── Reverted 2-Button View Toggle (List vs Map) ─── */}
+      {/* ─── Neutral Active State View Toggle (List vs Map) ─── */}
       <div className="view-toggle">
         <button
           className={`view-toggle__btn ${view === 'list' ? 'view-toggle__btn--active' : ''}`}
           onClick={() => setView('list')}
           aria-label="List view"
+          style={view === 'list' ? { backgroundColor: 'var(--color-black)', color: 'var(--color-white)' } : { backgroundColor: 'var(--color-white)', color: 'var(--color-black)' }}
         >
-          <List size={16} /> LIST VIEW
+          <List size={16} /> List View
         </button>
         <button
           className={`view-toggle__btn ${view === 'map' ? 'view-toggle__btn--active' : ''}`}
           onClick={() => setView('map')}
           aria-label="Map view"
+          style={view === 'map' ? { backgroundColor: 'var(--color-black)', color: 'var(--color-white)' } : { backgroundColor: 'var(--color-white)', color: 'var(--color-black)' }}
         >
-          <MapIcon size={16} /> MAP VIEW
+          <MapIcon size={16} /> Map View
         </button>
       </div>
 
@@ -544,7 +594,7 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
         }}>
           <div className="neo-card" style={{ maxWidth: '400px', width: '100%', padding: 'var(--space-6)', textAlign: 'center' }}>
             <div style={{ fontSize: '48px', marginBottom: 'var(--space-3)' }}>🔔</div>
-            <h2 style={{ fontSize: '24px', marginBottom: 'var(--space-2)' }}>Never miss out</h2>
+            <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '24px', marginBottom: 'var(--space-2)' }}>Never miss out</h2>
             <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-6)', lineHeight: 1.4 }}>
               Enable notifications to get alerts when you're near a hidden gem or a popular spot!
             </p>
@@ -564,7 +614,7 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-4)'
         }}>
           <div className="neo-card" style={{ maxWidth: '500px', width: '100%', padding: 'var(--space-5)', maxHeight: '90vh', overflowY: 'auto' }}>
-            <h2 style={{ fontSize: '24px', marginBottom: 'var(--space-4)' }}>Host an Activity</h2>
+            <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '24px', marginBottom: 'var(--space-4)' }}>Host an Activity</h2>
             <form onSubmit={handleCreateActivity}>
               <div style={{ marginBottom: 'var(--space-3)' }}>
                 <label className="neo-label">Activity Name</label>
@@ -598,7 +648,7 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
               </div>
               <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
                 <button type="button" className="neo-btn neo-btn--ghost" style={{ flex: 1 }} onClick={() => setShowCreateActivity(false)}>Cancel</button>
-                <button type="submit" className="neo-btn neo-btn--primary" style={{ flex: 1, backgroundColor: 'var(--color-pink)' }}>Publish to Map</button>
+                <button type="submit" className="neo-btn neo-btn--primary" style={{ flex: 1 }}>Publish to Map</button>
               </div>
             </form>
           </div>
@@ -607,3 +657,4 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
     </div>
   );
 }
+

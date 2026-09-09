@@ -25,6 +25,8 @@ export default function CustomMap({
   const markersLayerRef = useRef(null);
   const userMarkerRef = useRef(null);
 
+  const [isLegendOpen, setIsLegendOpen] = useState(false);
+
   // Default initial center: Dubai (Burj Khalifa area)
   const initialLat = userLat || 25.1972;
   const initialLng = userLng || 55.2744;
@@ -37,11 +39,11 @@ export default function CustomMap({
     const map = L.map(mapRef.current, {
       center: [initialLat, initialLng],
       zoom: 13,
-      zoomControl: false, // We render custom Neo-Brutalist controls
+      zoomControl: false, // Custom controls
       attributionControl: false,
     });
 
-    // Map API key from environment variables (Google Maps or Mapbox key)
+    // Map API key from environment variables
     const mapApiKey =
       (typeof import.meta !== 'undefined' && import.meta.env && (
         import.meta.env.VITE_GOOGLE_MAPS_API_KEY ||
@@ -53,7 +55,7 @@ export default function CustomMap({
     let tileOptions = {
       maxZoom: 19,
       subdomains: ['0', '1', '2', '3'],
-      attribution: '&copy; <a href="https://maps.google.com" target="_blank" rel="noreferrer">Google Maps</a>',
+      attribution: '&copy; Google Maps',
     };
 
     if (mapApiKey) {
@@ -61,7 +63,7 @@ export default function CustomMap({
         tileUrl = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}?access_token=${mapApiKey}`;
         tileOptions = {
           maxZoom: 19,
-          attribution: '&copy; <a href="https://www.mapbox.com/" target="_blank" rel="noreferrer">Mapbox</a>',
+          attribution: '&copy; Mapbox',
         };
       } else {
         tileUrl = `https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&key=${mapApiKey}`;
@@ -78,7 +80,6 @@ export default function CustomMap({
 
     mapInstanceRef.current = map;
 
-    // Resize observer to ensure full container responsiveness
     const resizeObserver = new ResizeObserver(() => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.invalidateSize();
@@ -95,7 +96,7 @@ export default function CustomMap({
     };
   }, []);
 
-  // Update user location marker & accuracy circle
+  // Update user location marker
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !userLat || !userLng) return;
@@ -108,7 +109,7 @@ export default function CustomMap({
       className: 'custom-user-marker',
       html: `
         <div style="position: relative; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">
-          <div style="position: absolute; width: 24px; height: 24px; border-radius: 50%; background: rgba(0, 149, 255, 0.35); animation: pulseRing 1.8s infinite;"></div>
+          <div style="position: absolute; width: 24px; height: 24px; border-radius: 50%; background: rgba(0, 122, 255, 0.3); animation: pulseRing 1.8s infinite;"></div>
           <div style="width: 14px; height: 14px; border-radius: 50%; background: #007AFF; border: 2.5px solid #FFFFFF; box-shadow: 0 2px 6px rgba(0,0,0,0.4);"></div>
         </div>
       `,
@@ -128,7 +129,6 @@ export default function CustomMap({
 
     layer.clearLayers();
 
-    // Combine places and group activities into a unified array
     const allItems = [
       ...places.map(p => ({ ...p, isGroup: false })),
       ...groups.filter(g => g.lat && g.lng).map(g => ({ ...g, isGroup: true })),
@@ -140,42 +140,49 @@ export default function CustomMap({
       const isVisited = visitedIds.has(item.id);
       const isSelected = selectedPlaceId === item.id;
       
-      // Determine Pin Type & Styling based on legend categories
-      let pinEmoji = '📍';
-      let pinBg = 'var(--color-yellow)';
+      // Category Pin Background matching global design tokens
+      let pinEmoji = CATEGORY_EMOJI[item.category] || '📍';
+      let pinBg = '#FFE8D6';
 
       if (item.isGroup) {
         pinEmoji = '🎉';
-        pinBg = 'var(--color-pink)';
-      } else if (item.category === 'cafe' || item.category === 'food' || item.category === 'nightlife') {
-        pinEmoji = item.category === 'cafe' ? '☕' : '🌮';
-        pinBg = 'var(--color-yellow)';
-      } else if (item.category === 'attraction' || item.category === 'culture' || item.category === 'shopping') {
-        pinEmoji = item.category === 'culture' ? '🏛️' : '⭐';
-        pinBg = 'var(--color-mint)';
+        pinBg = '#F5B7D2';
+      } else if (item.category === 'cafe') {
+        pinBg = '#E8D5C4';
+      } else if (item.category === 'food') {
+        pinBg = '#FFE8D6';
+      } else if (item.category === 'nightlife') {
+        pinBg = '#F3E5F5';
+      } else if (item.category === 'attraction') {
+        pinBg = '#FCF3CF';
+      } else if (item.category === 'culture') {
+        pinBg = '#E8DAEF';
       } else if (item.category === 'outdoor' || item.category === 'sports') {
-        pinEmoji = '🏖️';
-        pinBg = 'var(--color-sky)';
+        pinBg = '#D4EFDF';
+      } else if (item.category === 'shopping') {
+        pinBg = '#FADBD8';
       }
 
+      // Selected active pin state: larger size + white outline ring
       const customIcon = L.divIcon({
         className: 'custom-neo-marker',
         html: `
           <div style="
             position: relative;
             background-color: ${pinBg};
-            border: ${isSelected ? '3px' : '2.5px'} solid #000000;
-            border-radius: ${item.isGroup ? '50%' : '12px 12px 12px 0'};
+            border: 2px solid #1C1A17;
+            border-radius: ${item.isGroup ? '50%' : '10px 10px 10px 0'};
             width: ${isSelected ? '44px' : '36px'};
             height: ${isSelected ? '44px' : '36px'};
             display: flex;
             align-items: center;
+            justify: content;
             justify-content: center;
             font-size: ${isSelected ? '22px' : '18px'};
-            box-shadow: ${isSelected ? '5px 5px 0 #000000' : '3px 3px 0 #000000'};
+            box-shadow: ${isSelected ? '0 0 0 3px #FFFFFF, 4px 4px 0 #1C1A17' : '3px 3px 0 #1C1A17'};
             cursor: pointer;
-            transform: scale(${isSelected ? '1.2' : '1'});
-            transition: transform 0.2s ease;
+            transform: ${isSelected ? 'scale(1.15) translateY(-4px)' : 'scale(1)'};
+            transition: all 0.2s cubic-bezier(.2,.8,.2,1);
           ">
             <span>${pinEmoji}</span>
             ${item.isGroup ? '<div style="position: absolute; inset: -4px; border-radius: 50%; border: 2px solid #FF2E93; animation: pulseRing 1.8s infinite;"></div>' : ''}
@@ -192,9 +199,9 @@ export default function CustomMap({
 
       marker.bindPopup(`
         <div style="font-family: inherit; padding: 4px; min-width: 140px;">
-          <div style="font-size: 10px; font-weight: 900; text-transform: uppercase; color: #555;">${CATEGORY_EMOJI[item.category] || '📍'} ${item.category || 'spot'}</div>
-          <div style="font-size: 14px; font-weight: 900; margin: 2px 0; color: #000;">${item.name}</div>
-          ${item.rating ? `<div style="font-size: 12px; font-weight: 800; color: #000;">⭐ ${item.rating} / 5.0</div>` : ''}
+          <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #666;">${CATEGORY_EMOJI[item.category] || '📍'} ${item.category || 'spot'}</div>
+          <div style="font-family: var(--font-serif); font-size: 15px; font-weight: 700; margin: 2px 0; color: #1C1A17;">${item.name}</div>
+          ${item.rating ? `<div style="font-size: 12px; font-weight: 600; color: #1C1A17;">⭐ ${item.rating} / 5.0</div>` : ''}
         </div>
       `, { offset: [0, -32] });
 
@@ -207,7 +214,7 @@ export default function CustomMap({
     });
   }, [places, groups, selectedPlaceId, visitedIds, onSelectPlace]);
 
-  // Smooth fly to selected place when selected from list
+  // Smooth fly to selected place
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !selectedPlaceId) return;
@@ -218,7 +225,6 @@ export default function CustomMap({
     }
   }, [selectedPlaceId, places, groups]);
 
-  // Locate Me Action: center directly on user location
   const handleLocateMe = () => {
     const map = mapInstanceRef.current;
     if (map && userLat && userLng) {
@@ -226,7 +232,6 @@ export default function CustomMap({
     }
   };
 
-  // Zoom controls
   const handleZoomIn = () => {
     mapInstanceRef.current?.zoomIn(1);
   };
@@ -253,7 +258,7 @@ export default function CustomMap({
       {/* ─── Leaflet Real-Time UAE Map Element ─── */}
       <div ref={mapRef} style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }} />
 
-      {/* ─── Map Legend Overlay (Bottom Left) ─── */}
+      {/* ─── Collapsible Map Legend Overlay (Bottom Left) ─── */}
       <div
         style={{
           position: 'absolute',
@@ -261,36 +266,62 @@ export default function CustomMap({
           left: '16px',
           zIndex: 500,
           backgroundColor: 'var(--color-paper)',
-          border: '2.5px solid var(--color-black)',
-          borderRadius: '12px',
-          padding: '10px 14px',
-          boxShadow: '4px 4px 0 var(--color-black)',
+          border: '2px solid var(--color-black)',
+          borderRadius: '10px',
+          padding: isLegendOpen ? '10px 14px' : '6px 12px',
+          boxShadow: '3px 3px 0 var(--color-black)',
           fontSize: '11px',
-          fontWeight: 900,
+          fontWeight: 700,
           display: 'flex',
           flexDirection: 'column',
-          gap: '6px'
+          gap: '6px',
+          transition: 'all 0.2s ease'
         }}
       >
-        <div style={{ textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: '2px', fontSize: '10px' }}>
-          🗺️ MAP LEGEND
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ width: '22px', height: '22px', borderRadius: '50%', backgroundColor: 'var(--color-yellow)', border: '2px solid #000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>☕</span>
-          <span>Cafes & Dining</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ width: '22px', height: '22px', borderRadius: '50%', backgroundColor: 'var(--color-mint)', border: '2px solid #000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>⭐</span>
-          <span>Attractions & Culture</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ width: '22px', height: '22px', borderRadius: '50%', backgroundColor: 'var(--color-sky)', border: '2px solid #000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>🏖️</span>
-          <span>Beaches & Outdoors</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ width: '22px', height: '22px', borderRadius: '50%', backgroundColor: 'var(--color-pink)', border: '2px solid #000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>🎉</span>
-          <span>Custom Party Pins</span>
-        </div>
+        <button
+          onClick={() => setIsLegendOpen(!isLegendOpen)}
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justify: 'space-between',
+            gap: '8px',
+            fontSize: '11px',
+            fontWeight: 700,
+            color: 'var(--text-primary)'
+          }}
+        >
+          <span>🗺️ Map Legend</span>
+          <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{isLegendOpen ? '▲' : '▼'}</span>
+        </button>
+
+        {isLegendOpen && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px', paddingTop: '6px', borderTop: '1px solid var(--border-muted)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ width: '18px', height: '18px', borderRadius: '4px', backgroundColor: '#E8D5C4', border: '1.5px solid #000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px' }}>☕</span>
+              <span>Cafes & Coffee</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ width: '18px', height: '18px', borderRadius: '4px', backgroundColor: '#FFE8D6', border: '1.5px solid #000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px' }}>🍽️</span>
+              <span>Food & Dining</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ width: '18px', height: '18px', borderRadius: '4px', backgroundColor: '#FCF3CF', border: '1.5px solid #000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px' }}>⭐</span>
+              <span>Attractions</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ width: '18px', height: '18px', borderRadius: '4px', backgroundColor: '#D4EFDF', border: '1.5px solid #000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px' }}>🌿</span>
+              <span>Outdoors & Parks</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ width: '18px', height: '18px', borderRadius: '4px', backgroundColor: '#F5B7D2', border: '1.5px solid #000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px' }}>🎉</span>
+              <span>Group Meetups</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ─── Top Center Host Activity Button ─── */}

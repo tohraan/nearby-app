@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User, Settings, Compass, Moon } from 'lucide-react';
+import { User, Settings, Check } from 'lucide-react';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 
 const INTEREST_OPTIONS = [
@@ -15,20 +15,17 @@ export default function Profile() {
   const isOnline = useOnlineStatus();
   const [profile, setProfile] = useState({
     name: 'Guest User',
-    interests: [],
+    interests: ['cafe', 'outdoor'],
     maxDistance: 5, // km
   });
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    // Load from local storage
     const stored = localStorage.getItem('nearby_profile');
     if (stored) {
       try {
         setProfile(JSON.parse(stored));
-      } catch (e) {
-        // use default
-      }
+      } catch (e) {}
     }
   }, []);
 
@@ -51,79 +48,159 @@ export default function Profile() {
   };
 
   return (
-    <div className="app-shell__content" style={{ display: 'flex', flexDirection: 'column' }}>
-      <div className="saved-header">
-        <h1>PROFILE</h1>
-        <Settings size={24} color="var(--text-primary)" />
+    <div className="app-shell__content" style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '640px', margin: '0 auto' }}>
+      {/* Title */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '28px', fontWeight: 700, margin: 0 }}>Profile & Settings</h1>
+        <Settings size={22} color="var(--text-muted)" />
       </div>
 
-      <div className="neo-card" style={{ marginBottom: 'var(--space-6)', display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
-        <div style={{ width: '64px', height: '64px', borderRadius: '32px', background: 'var(--color-yellow)', border: '2px solid var(--color-black)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <User size={32} />
+      {/* a. Display Name (compact single row, low visual weight) */}
+      <div
+        style={{
+          padding: '12px 16px',
+          backgroundColor: 'var(--color-white)',
+          border: '1.5px solid var(--border-muted)',
+          borderRadius: '10px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px'
+        }}
+      >
+        <div
+          style={{
+            width: '38px',
+            height: '38px',
+            borderRadius: '50%',
+            backgroundColor: 'var(--color-gray-100)',
+            border: '1.5px solid var(--border-default)',
+            display: 'flex',
+            alignItems: 'center',
+            justify: 'center',
+            flexShrink: 0
+          }}
+        >
+          <User size={20} color="var(--text-primary)" />
         </div>
-        <div style={{ flex: 1 }}>
-          <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Display Name</label>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Name:</span>
           <input
             type="text"
-            className="neo-input"
-            style={{ width: '100%', padding: '8px' }}
             value={profile.name}
             onChange={e => setProfile({ ...profile, name: e.target.value })}
+            style={{
+              border: 'none',
+              background: 'none',
+              fontSize: '15px',
+              fontWeight: 600,
+              color: 'var(--text-primary)',
+              width: '100%',
+              outline: 'none'
+            }}
           />
         </div>
       </div>
 
-      <h3 style={{ fontSize: '14px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: 'var(--font-mono)', marginBottom: 'var(--space-3)' }}>
-        YOUR VIBES
-      </h3>
-      <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: 'var(--space-4)' }}>
-        We'll use these to recommend the best spots for you on the home screen.
-      </p>
+      {/* b. Your Vibes (Visually dominant section with instructional subtext) */}
+      <div
+        className="neo-card"
+        style={{
+          backgroundColor: 'var(--color-white)',
+          padding: '20px',
+          border: '2px solid var(--color-black)',
+          boxShadow: '4px 4px 0 var(--color-black)'
+        }}
+      >
+        <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '20px', fontWeight: 700, marginBottom: '4px' }}>
+          Your Vibes
+        </h2>
+        <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+          We'll lead with these on your home screen.
+        </p>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)', marginBottom: 'var(--space-6)' }}>
-        {INTEREST_OPTIONS.map(interest => {
-          const isSelected = profile.interests.includes(interest.id);
-          return (
-            <button
-              key={interest.id}
-              className={`category-chip ${isSelected ? 'category-chip--active' : ''}`}
-              onClick={() => toggleInterest(interest.id)}
-            >
-              {interest.emoji} {interest.label}
-            </button>
-          );
-        })}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+          {INTEREST_OPTIONS.map(interest => {
+            const isSelected = profile.interests.includes(interest.id);
+            return (
+              <button
+                key={interest.id}
+                onClick={() => toggleInterest(interest.id)}
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  border: '1.5px solid var(--color-black)',
+                  backgroundColor: isSelected ? 'var(--color-yellow)' : 'var(--color-white)',
+                  color: 'var(--color-black)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: isSelected ? '2px 2px 0 var(--color-black)' : 'none',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <span>{interest.emoji} {interest.label}</span>
+                {isSelected && <Check size={14} strokeWidth={3} />}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      <h3 style={{ fontSize: '14px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: 'var(--font-mono)', marginBottom: 'var(--space-3)' }}>
-        PREFERENCES
-      </h3>
-      <div className="neo-card neo-card--pink" style={{ marginBottom: 'var(--space-6)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-2)' }}>
-          <span style={{ fontWeight: 600 }}>Max Discovery Distance</span>
-          <span>{profile.maxDistance} km</span>
+      {/* c. Discovery Distance (compact white card with secondary accent pill) */}
+      <div
+        style={{
+          padding: '16px 20px',
+          backgroundColor: 'var(--color-white)',
+          border: '1.5px solid var(--border-default)',
+          borderRadius: '12px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>Max Discovery Distance</span>
+          <span
+            style={{
+              fontSize: '12px',
+              fontWeight: 700,
+              backgroundColor: 'var(--color-sky)',
+              color: 'var(--color-black)',
+              border: '1px solid var(--color-black)',
+              borderRadius: '999px',
+              padding: '2px 10px'
+            }}
+          >
+            {profile.maxDistance} km
+          </span>
         </div>
+
         <input 
           type="range" 
           min="1" 
-          max="20" 
+          max="25" 
           value={profile.maxDistance}
           onChange={e => setProfile({ ...profile, maxDistance: parseInt(e.target.value, 10) })}
-          style={{ width: '100%', accentColor: 'var(--color-purple)' }}
+          style={{ width: '100%', accentColor: 'var(--color-black)', cursor: 'pointer' }}
         />
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted)' }}>
           <span>Walking (1km)</span>
-          <span>Driving (20km)</span>
+          <span>Citywide (25km)</span>
         </div>
       </div>
 
-      <div style={{ marginTop: 'auto', paddingBottom: 'var(--space-4)' }}>
+      {/* Full-width primary accent button at bottom */}
+      <div style={{ marginTop: '12px' }}>
         <button 
           className="neo-btn neo-btn--primary" 
-          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+          style={{ width: '100%', height: '50px', fontSize: '15px', fontWeight: 700, backgroundColor: 'var(--color-yellow)', color: 'var(--color-black)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
           onClick={handleSave}
         >
-          {saved ? 'SAVED!' : 'SAVE PREFERENCES'}
+          {saved ? 'Preferences Saved!' : 'Save Preferences'}
         </button>
       </div>
     </div>

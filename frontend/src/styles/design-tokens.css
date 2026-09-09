@@ -5,11 +5,11 @@
 
 :root {
   /* ─── Core Colors ─── */
-  --color-black: #111111;
-  --color-ink: #171717;
+  --color-black: #1C1A17;
+  --color-ink: #1C1A17;
   --color-white: #FFFFFF;
-  --color-paper: #FFFDF7;
-  --color-cream: #F6F0E5;
+  --color-paper: #F7F5F0;
+  --color-cream: #EFECE6;
 
   /* ─── Neo-Brutalist Accents ─── */
   --color-yellow: #F7E84F;
@@ -25,6 +25,17 @@
   --color-blue: #9BB9FF;
   --color-sky: #B9E7F4;
   --color-red: #FF5C5C;
+
+  /* ─── Category Specific Tag Colors (Distinct from Primary Accent) ─── */
+  --cat-food-bg: #FFE8D6;
+  --cat-cafe-bg: #E8D5C4;
+  --cat-nightlife-bg: #F3E5F5;
+  --cat-entertainment-bg: #E8F8F5;
+  --cat-outdoor-bg: #D4EFDF;
+  --cat-sports-bg: #D6EAF8;
+  --cat-culture-bg: #E8DAEF;
+  --cat-attraction-bg: #FCF3CF;
+  --cat-shopping-bg: #FADBD8;
 
   /* ─── Neutral UI ─── */
   --color-gray-50: #FAFAF8;
@@ -48,7 +59,7 @@
   --border-default: var(--color-black);
   --border-muted: var(--color-gray-300);
   --action-primary: var(--color-yellow);
-  --action-secondary: var(--color-pink);
+  --action-secondary: var(--color-sky);
   --state-success: var(--color-mint-strong);
   --state-warning: var(--color-orange);
   --state-error: var(--color-red);
@@ -56,6 +67,7 @@
 
   /* ─── Typography ─── */
   --font-sans: 'Geist', 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
   --font-mono: 'Geist Mono', 'JetBrains Mono', ui-monospace, monospace;
   --font-display: 800;
   --font-heading: 750;

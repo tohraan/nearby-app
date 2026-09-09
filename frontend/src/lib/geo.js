@@ -170,39 +170,28 @@ export function getActionableUrl(place) {
   return `https://www.google.com/maps/search/?api=1&query=${queryName}`;
 }
 
-/**
- * Returns a human-friendly action button label for a place/event.
- */
 export function getActionLabel(place) {
-  if (place?.actionLabel && typeof place.actionLabel === 'string' && place.actionLabel.trim().length > 0) {
-    return place.actionLabel.trim();
+  const category = (place?.category || place?.actionType || '').toLowerCase();
+  
+  if (category === 'cafe' || category === 'food' || category === 'nightlife') {
+    return 'Reserve table';
   }
-  const type = place?.actionType || place?.category;
-  switch (type) {
-    case 'tickets':
-      return 'Get Tickets';
-    case 'registration':
-      return 'Register Now';
-    case 'reservation':
-      return 'Reserve Table';
-    case 'booking':
-      return 'Book Activity';
-    case 'rsvp':
-      return 'RSVP';
-    case 'website':
-      return 'Visit Website';
-    case 'maps':
-      return 'View on Maps';
-    case 'cafe':
-    case 'food':
-    case 'nightlife':
-      return 'Reserve Table';
-    case 'culture':
-    case 'attraction':
-    case 'entertainment':
-      return 'Book Tickets';
-    default:
-      return 'Visit Official Page';
+  if (category === 'attraction' || category === 'culture' || category === 'entertainment' || category === 'shopping') {
+    return 'Book tickets';
   }
+  if (category === 'outdoor' || category === 'sports' || category === 'beach' || category === 'landmark') {
+    return 'Get directions';
+  }
+  
+  // Fallback check on place name
+  const nameLower = (place?.name || '').toLowerCase();
+  if (nameLower.includes('beach') || nameLower.includes('park') || nameLower.includes('mountain') || nameLower.includes('trail')) {
+    return 'Get directions';
+  }
+  if (nameLower.includes('museum') || nameLower.includes('frame') || nameLower.includes('view') || nameLower.includes('pass')) {
+    return 'Book tickets';
+  }
+
+  return 'Get directions';
 }
 

@@ -24,7 +24,6 @@ const VIBE_CARDS = [
     title: 'Specialty Coffee & Work',
     desc: 'Cozy cafes with high-speed WiFi and great brews',
     prompt: 'Show me top specialty coffee shops in Dubai with great WiFi for work',
-    color: 'var(--color-yellow)'
   },
   {
     id: 'vibe_sunset',
@@ -33,7 +32,6 @@ const VIBE_CARDS = [
     title: 'Sunset & Views',
     desc: 'Rooftops, beach lounges, and scenic golden hour spots',
     prompt: 'Where are the best rooftop lounges or beach spots for sunset views?',
-    color: 'var(--color-pink)'
   },
   {
     id: 'vibe_food',
@@ -42,7 +40,6 @@ const VIBE_CARDS = [
     title: 'Late Night & Cheap Eats',
     desc: 'Top local burgers, shawarma, and hidden culinary gems',
     prompt: 'Recommend hidden gem food spots and late night eats nearby',
-    color: 'var(--color-mint)'
   },
   {
     id: 'vibe_outdoor',
@@ -51,7 +48,6 @@ const VIBE_CARDS = [
     title: 'Outdoor & Road Trips',
     desc: 'Mountain drives, beach volleyball, ziplines, and trails',
     prompt: 'What are the best outdoor activities or road trip spots in UAE?',
-    color: 'var(--color-sky)'
   },
   {
     id: 'vibe_drinks',
@@ -60,7 +56,6 @@ const VIBE_CARDS = [
     title: 'Drinks & Speakeasies',
     desc: 'Trendy lounges, speakeasies, and live music venues',
     prompt: 'Suggest top nightlife spots, cocktails, or speakeasies around',
-    color: 'var(--color-lavender)'
   },
   {
     id: 'vibe_culture',
@@ -69,7 +64,6 @@ const VIBE_CARDS = [
     title: 'Art & Cultural Hubs',
     desc: 'Exhibitions, art districts, and iconic architecture',
     prompt: 'What cultural landmarks or art exhibitions should I visit today?',
-    color: 'var(--color-cream)'
   }
 ];
 
@@ -228,55 +222,65 @@ export default function Chat({ onNavigateToPlace }) {
     <div className="app-shell__content chat-screen" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100dvh - 84px)', paddingBottom: 0 }}>
       {/* ─── Nearby Bot Top Header ─── */}
       <div
-        className="neo-card"
         style={{
           padding: '10px 16px',
-          backgroundColor: 'var(--color-cream)',
+          backgroundColor: 'var(--color-paper)',
           marginBottom: '12px',
           display: 'flex',
           alignItems: 'center',
           justify: 'space-between',
           flexShrink: 0,
-          border: '2.5px solid var(--color-black)',
-          boxShadow: '3px 3px 0 var(--color-black)'
+          border: '1.5px solid var(--border-default)',
+          borderRadius: '12px'
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div
             style={{
-              width: '36px',
-              height: '36px',
+              width: '34px',
+              height: '34px',
               borderRadius: '50%',
               backgroundColor: 'var(--color-yellow)',
-              border: '2px solid var(--color-black)',
+              border: '1.5px solid var(--color-black)',
               display: 'flex',
               alignItems: 'center',
               justify: 'center',
-              fontSize: '18px',
-              boxShadow: '2px 2px 0 var(--color-black)',
+              fontSize: '16px',
               flexShrink: 0
             }}
           >
             🤖
           </div>
           <div>
-            <div style={{ fontSize: '15px', fontWeight: 900, letterSpacing: '-0.02em', lineHeight: 1.1 }}>
+            <div style={{ fontSize: '15px', fontWeight: 700, lineHeight: 1.1 }}>
               Nearby Bot
             </div>
-            <div style={{ fontSize: '11px', fontWeight: 800, color: '#00C853', display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px' }}>
-              <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#00C853', display: 'inline-block' }} />
-              Online • Local UAE Guide
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px' }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--state-success)', display: 'inline-block' }} />
+              Online • UAE Local Guide
             </div>
           </div>
         </div>
 
+        {/* Low-emphasis ghost/outlined clear button */}
         <button
-          className="neo-btn neo-btn--xs neo-btn--secondary"
           onClick={handleClearHistory}
           title="Clear Chat History"
-          style={{ padding: '4px 8px', fontSize: '10px', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '4px' }}
+          style={{
+            padding: '4px 10px',
+            fontSize: '11px',
+            fontWeight: 600,
+            color: 'var(--text-muted)',
+            backgroundColor: 'transparent',
+            border: '1px solid var(--border-muted)',
+            borderRadius: '6px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            cursor: 'pointer'
+          }}
         >
-          <Trash2 size={12} /> CLEAR
+          <Trash2 size={12} /> Clear
         </button>
       </div>
 
@@ -298,42 +302,40 @@ export default function Chat({ onNavigateToPlace }) {
             >
               {/* Bot Avatar Row */}
               {!isUser && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
                   <div
                     style={{
-                      width: '26px',
-                      height: '26px',
+                      width: '24px',
+                      height: '24px',
                       borderRadius: '50%',
                       backgroundColor: 'var(--color-yellow)',
-                      border: '1.5px solid var(--color-black)',
+                      border: '1px solid var(--color-black)',
                       display: 'flex',
                       alignItems: 'center',
                       justify: 'center',
-                      fontSize: '13px',
-                      boxShadow: '1.5px 1.5px 0 var(--color-black)'
+                      fontSize: '12px'
                     }}
                   >
                     🤖
                   </div>
-                  <span style={{ fontSize: '11px', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)' }}>
                     Nearby Bot
                   </span>
-                  {msg.fallback && <span className="neo-badge neo-badge--yellow" style={{ fontSize: '9px', padding: '1px 5px' }}>LOCAL ENGINE</span>}
                 </div>
               )}
 
               {/* Message Bubble */}
               <div
-                className="neo-card"
                 style={{
                   padding: '12px 16px',
                   fontSize: '14px',
-                  lineHeight: 1.4,
-                  fontWeight: 700,
-                  backgroundColor: isUser ? 'var(--color-yellow)' : 'var(--color-paper)',
+                  lineHeight: 1.45,
+                  fontWeight: isUser ? 600 : 400,
+                  backgroundColor: isUser ? 'var(--color-yellow)' : 'var(--color-white)',
+                  color: 'var(--color-black)',
                   borderRadius: isUser ? '16px 16px 2px 16px' : '16px 16px 16px 2px',
-                  border: '2px solid var(--color-black)',
-                  boxShadow: '3px 3px 0 var(--color-black)',
+                  border: '1.5px solid var(--color-black)',
+                  boxShadow: '2px 2px 0 var(--color-black)',
                   maxWidth: '100%'
                 }}
               >
@@ -343,18 +345,18 @@ export default function Chat({ onNavigateToPlace }) {
               {/* Recommended Places Cards embedded under Bot Reply */}
               {!isUser && msg.places && msg.places.length > 0 && (
                 <div style={{ width: '100%', marginTop: '12px' }}>
-                  <div style={{ fontSize: '11px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
-                    🎯 RECOMMENDED SPOTS ({msg.places.length})
+                  <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: '8px' }}>
+                    Recommended Spots ({msg.places.length})
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: '12px' }}>
                     {msg.places.map(place => (
                       <div
                         key={place.id}
                         className="neo-card neo-card--clickable place-card"
-                        style={{ padding: '12px', backgroundColor: 'var(--color-cream)', width: '100%', display: 'flex', flexDirection: 'column' }}
+                        style={{ padding: '12px', backgroundColor: 'var(--color-white)', width: '100%', display: 'flex', flexDirection: 'column' }}
                         onClick={() => onNavigateToPlace?.(place.id)}
                       >
-                        <div className="place-card__image" style={{ position: 'relative', overflow: 'hidden', height: '130px', borderRadius: '10px', border: '2px solid var(--color-black)', marginBottom: '8px' }}>
+                        <div className="place-card__image" style={{ position: 'relative', overflow: 'hidden', height: '130px', borderRadius: '8px', border: '1.5px solid var(--color-black)', marginBottom: '8px' }}>
                           <img
                             src={getPlaceImage(place)}
                             alt={place.name}
@@ -364,43 +366,27 @@ export default function Chat({ onNavigateToPlace }) {
                             }}
                             style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                           />
-                          <div
-                            style={{
-                              position: 'absolute',
-                              top: '6px',
-                              left: '6px',
-                              backgroundColor: 'var(--color-yellow)',
-                              border: '2px solid var(--color-black)',
-                              borderRadius: '6px',
-                              padding: '2px 6px',
-                              fontSize: '10px',
-                              fontWeight: 900,
-                              boxShadow: '2px 2px 0 var(--color-black)',
-                              textTransform: 'uppercase'
-                            }}
-                          >
-                            {CATEGORY_EMOJI[place.category]} {place.category}
-                          </div>
                         </div>
-                        <div className="place-card__name" style={{ fontSize: '15px', fontWeight: 800, lineHeight: 1.2 }}>{place.name}</div>
+
+                        <div className={`category-tag category-tag--${place.category}`}>
+                          {CATEGORY_EMOJI[place.category]} {place.category}
+                        </div>
+
+                        <div className="place-card__name" style={{ fontSize: '16px' }}>{place.name}</div>
+
                         <div className="place-card__meta" style={{ marginTop: '4px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <span className="place-card__rating">⭐ {place.rating || '4.8'}</span>
                           <span style={{ color: 'var(--text-muted)' }}>•</span>
                           <span>{place.city}</span>
                         </div>
+
                         <div className="place-card__actions" style={{ marginTop: 'auto', paddingTop: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <button
-                            className="neo-btn neo-btn--xs neo-btn--primary"
-                            style={{ flex: 1, padding: '4px 6px', fontSize: '11px', fontWeight: 900 }}
-                          >
-                            VIEW
-                          </button>
                           <a
                             href={getActionableUrl(place)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="neo-btn neo-btn--xs neo-btn--accent"
-                            style={{ flex: 1, padding: '4px 6px', fontSize: '11px', fontWeight: 900, textDecoration: 'none', textAlign: 'center', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '2px' }}
+                            className="neo-btn neo-btn--sm neo-btn--primary"
+                            style={{ flex: 1, padding: '0 8px', fontSize: '12px', fontWeight: 700, textDecoration: 'none', textAlign: 'center', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '2px' }}
                             onClick={(e) => e.stopPropagation()}
                           >
                             {getActionLabel(place)} <ExternalLink size={10} />
@@ -415,14 +401,14 @@ export default function Chat({ onNavigateToPlace }) {
           );
         })}
 
-        {/* Interactive Vibe Discovery Panel (Shown when conversation is fresh) */}
+        {/* Interactive Vibe Discovery Panel (Unified neutral card style + secondary accent icon chip) */}
         {messages.length <= 1 && (
           <div style={{ marginTop: '8px', marginBottom: '8px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
-              ⚡ CHOOSE A VIBE FOR INSTANT AI RECOMMENDATIONS
+            <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: '10px' }}>
+              Choose a vibe for instant recommendations
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '10px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px' }}>
               {VIBE_CARDS.map(card => {
                 const IconComp = card.icon;
                 return (
@@ -431,21 +417,25 @@ export default function Chat({ onNavigateToPlace }) {
                     className="neo-card neo-card--clickable"
                     style={{
                       padding: '12px',
-                      backgroundColor: card.color,
+                      backgroundColor: 'var(--color-white)',
+                      border: '1.5px solid var(--border-default)',
+                      boxShadow: '2px 2px 0 var(--color-black)',
                       display: 'flex',
                       alignItems: 'flex-start',
-                      gap: '10px',
+                      gap: '12px',
                       cursor: 'pointer'
                     }}
                     onClick={() => handleSend(null, card.prompt)}
                   >
+                    {/* Icon chip using secondary accent color background */}
                     <div
                       style={{
-                        width: '34px',
-                        height: '34px',
+                        width: '36px',
+                        height: '36px',
                         borderRadius: '8px',
-                        backgroundColor: 'var(--color-black)',
-                        color: 'var(--color-cream)',
+                        backgroundColor: 'var(--color-sky)',
+                        color: 'var(--color-black)',
+                        border: '1px solid var(--color-black)',
                         display: 'flex',
                         alignItems: 'center',
                         justify: 'center',
@@ -454,15 +444,16 @@ export default function Chat({ onNavigateToPlace }) {
                     >
                       <IconComp size={18} />
                     </div>
+
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '13px', fontWeight: 900, lineHeight: 1.2 }}>
-                        {card.emoji} {card.title}
+                      <div style={{ fontSize: '14px', fontWeight: 700, lineHeight: 1.2, color: 'var(--text-primary)' }}>
+                        {card.title}
                       </div>
-                      <div style={{ fontSize: '11px', color: 'var(--color-black)', marginTop: '2px', opacity: 0.85, lineHeight: 1.3 }}>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', lineHeight: 1.3 }}>
                         {card.desc}
                       </div>
-                      <div style={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '2px' }}>
-                        ASK BOT <ChevronRight size={10} />
+                      <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                        Ask Bot →
                       </div>
                     </div>
                   </div>
@@ -477,20 +468,20 @@ export default function Chat({ onNavigateToPlace }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
             <div
               style={{
-                width: '26px',
-                height: '26px',
+                width: '24px',
+                height: '24px',
                 borderRadius: '50%',
                 backgroundColor: 'var(--color-yellow)',
-                border: '1.5px solid var(--color-black)',
+                border: '1px solid var(--color-black)',
                 display: 'flex',
                 alignItems: 'center',
                 justify: 'center',
-                fontSize: '13px'
+                fontSize: '12px'
               }}
             >
               🤖
             </div>
-            <div className="neo-badge neo-badge--yellow" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 12px', fontSize: '12px', fontWeight: 900 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: 600, backgroundColor: 'var(--color-white)', border: '1px solid var(--border-default)', borderRadius: '8px' }}>
               <Loader2 size={14} className="spin-icon" style={{ animation: 'spin 1s linear infinite' }} />
               <span>{STATUS_WORDS[statusIndex]}</span>
             </div>
@@ -504,41 +495,53 @@ export default function Chat({ onNavigateToPlace }) {
         style={{
           position: 'sticky',
           bottom: 0,
-          backgroundColor: 'var(--color-cream)',
-          paddingTop: '8px',
-          paddingBottom: '6px',
+          backgroundColor: 'var(--color-paper)',
+          paddingTop: '10px',
+          paddingBottom: '10px',
           flexShrink: 0,
           zIndex: 100,
-          borderTop: '2px solid var(--color-black)',
+          borderTop: '1px solid var(--border-muted)',
           marginInline: '-16px',
           paddingInline: '16px'
         }}
       >
-        {/* Quick Action Prompt Pills with Lucide Icons */}
+        {/* Quick Action Prompt Pills using neutral outlined-pill style */}
         <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '8px', scrollbarWidth: 'none' }}>
           {STARTER_PROMPTS.map(sp => {
             const IconComp = sp.icon;
             return (
               <button
                 key={sp.label}
-                className="category-chip"
-                style={{ flexShrink: 0, padding: '4px 10px', fontSize: '11px', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                style={{
+                  flexShrink: 0,
+                  padding: '6px 12px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  backgroundColor: 'var(--color-white)',
+                  color: 'var(--color-black)',
+                  border: '1.5px solid var(--color-black)',
+                  borderRadius: '999px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  cursor: 'pointer'
+                }}
                 onClick={() => handleSend(null, sp.prompt)}
                 disabled={loading}
               >
                 <IconComp size={12} />
-                <span>{sp.emoji} {sp.label}</span>
+                <span>{sp.label}</span>
               </button>
             );
           })}
         </div>
 
-        {/* Input Form */}
+        {/* Input Form — Send button is sole solid primary accent fill */}
         <form onSubmit={handleSend} style={{ display: 'flex', gap: '8px', width: '100%' }}>
           <input
             type="text"
             className="neo-input"
-            style={{ flex: 1, height: '46px', fontSize: '14px' }}
+            style={{ flex: 1, height: '46px', fontSize: '14px', borderRadius: '10px', backgroundColor: 'var(--color-white)' }}
             placeholder="Ask Nearby Bot: coffee spots, sunsets, late night eats..."
             value={input}
             onChange={e => setInput(e.target.value)}
@@ -547,14 +550,15 @@ export default function Chat({ onNavigateToPlace }) {
           <button
             type="submit"
             className="neo-btn neo-btn--primary"
-            style={{ width: '50px', height: '46px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            style={{ width: '48px', height: '46px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--color-yellow)', color: 'var(--color-black)', borderRadius: '10px', flexShrink: 0 }}
             disabled={!input.trim() || loading}
             aria-label="Send message"
           >
-            <Send size={20} />
+            <Send size={18} />
           </button>
         </form>
       </div>
     </div>
   );
 }
+
