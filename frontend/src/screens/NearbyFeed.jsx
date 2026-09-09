@@ -5,11 +5,12 @@
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Search, MapPin, List, Map as MapIcon, Star, Wifi, WifiOff, Bell, Check } from 'lucide-react';
+import { Search, MapPin, List, Map as MapIcon, Star, Wifi, WifiOff, Bell, Check, ExternalLink } from 'lucide-react';
 import { useGeolocation } from '../hooks/useGeolocation.js';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 import { getCachedPlaces, getSavedPlaceIds, savePlaceLocally, unsavePlaceLocally, getVisitedPlaceIds } from '../lib/db.js';
-import { sortByDistance, formatDistance, CATEGORY_EMOJI, CATEGORY_LABELS, getPlaceImage } from '../lib/geo.js';
+import { sortByDistance, formatDistance, CATEGORY_EMOJI, CATEGORY_LABELS, getPlaceImage, getActionableUrl, getActionLabel } from '../lib/geo.js';
+
 import { FALLBACK_PLACES } from '../lib/fallbackData.js';
 import { queueAction } from '../lib/offlineSync.js';
 import api from '../lib/api.js';
@@ -368,10 +369,23 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
                     <span>⭐ {selectedLocation.rating || 'New'}</span>
                     <span>{selectedLocation.city}</span>
                   </div>
-                  <button className="neo-btn neo-btn--primary" onClick={() => onNavigateToPlace?.(selectedLocation.id)}>
-                    View Place
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                    <button className="neo-btn neo-btn--primary" onClick={() => onNavigateToPlace?.(selectedLocation.id)} style={{ flex: 1 }}>
+                      View Place
+                    </button>
+                    <a
+                      href={getActionableUrl(selectedLocation)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="neo-btn neo-btn--accent"
+                      style={{ flex: 1, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontSize: '12px', fontWeight: 900 }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {getActionLabel(selectedLocation)} <ExternalLink size={12} />
+                    </a>
+                  </div>
                 </>
+
               )}
             </div>
           )}
@@ -424,8 +438,17 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
                     <span style={{ color: 'var(--text-muted)' }}>•</span>
                     <span className="place-card__distance"><MapPin size={12} /> {formatDistance(place.distance)}</span>
                   </div>
-                  <div className="place-card__actions" style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{place.city}</span>
+                  <div className="place-card__actions" style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                    <a
+                      href={getActionableUrl(place)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="neo-btn neo-btn--xs neo-btn--accent"
+                      style={{ textDecoration: 'none', fontWeight: 800, padding: '2px 8px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {getActionLabel(place)} <ExternalLink size={10} />
+                    </a>
                     <button
                       className={`place-card__save-btn ${savedIds.has(place.id) ? 'place-card__save-btn--saved' : ''}`}
                       onClick={(e) => { e.stopPropagation(); handleToggleSave(place.id); }}
@@ -481,8 +504,17 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
                     <span style={{ color: 'var(--text-muted)' }}>•</span>
                     <span className="place-card__distance"><MapPin size={12} /> {formatDistance(place.distance)}</span>
                   </div>
-                  <div className="place-card__actions" style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{place.city}</span>
+                  <div className="place-card__actions" style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                    <a
+                      href={getActionableUrl(place)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="neo-btn neo-btn--xs neo-btn--accent"
+                      style={{ textDecoration: 'none', fontWeight: 800, padding: '2px 8px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {getActionLabel(place)} <ExternalLink size={10} />
+                    </a>
                     <button
                       className={`place-card__save-btn ${savedIds.has(place.id) ? 'place-card__save-btn--saved' : ''}`}
                       onClick={(e) => { e.stopPropagation(); handleToggleSave(place.id); }}
@@ -551,8 +583,17 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
                     <MapPin size={12} /> {formatDistance(place.distance)}
                   </span>
                 </div>
-                <div className="place-card__actions" style={{ marginTop: 'auto' }}>
-                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{place.city}</span>
+                <div className="place-card__actions" style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', paddingTop: '8px' }}>
+                  <a
+                    href={getActionableUrl(place)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="neo-btn neo-btn--xs neo-btn--accent"
+                    style={{ textDecoration: 'none', fontWeight: 800, padding: '2px 8px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {getActionLabel(place)} <ExternalLink size={10} />
+                  </a>
                   <button
                     className={`place-card__save-btn ${savedIds.has(place.id) ? 'place-card__save-btn--saved' : ''}`}
                     onClick={(e) => { e.stopPropagation(); handleToggleSave(place.id); }}

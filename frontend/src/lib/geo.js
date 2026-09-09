@@ -154,3 +154,55 @@ export function getPlaceImage(place) {
   const index = Math.abs(hash) % list.length;
   return list[index];
 }
+
+/**
+ * Resolves the primary actionable external URL for a place or event.
+ * Priority order: actionUrl -> website -> Google Maps search fallback.
+ */
+export function getActionableUrl(place) {
+  if (place?.actionUrl && typeof place.actionUrl === 'string' && place.actionUrl.trim().length > 0) {
+    return place.actionUrl.trim();
+  }
+  if (place?.website && typeof place.website === 'string' && place.website.trim().length > 0) {
+    return place.website.trim();
+  }
+  const queryName = encodeURIComponent((place?.name || '') + (place?.city ? ` ${place.city}` : ''));
+  return `https://www.google.com/maps/search/?api=1&query=${queryName}`;
+}
+
+/**
+ * Returns a human-friendly action button label for a place/event.
+ */
+export function getActionLabel(place) {
+  if (place?.actionLabel && typeof place.actionLabel === 'string' && place.actionLabel.trim().length > 0) {
+    return place.actionLabel.trim();
+  }
+  const type = place?.actionType || place?.category;
+  switch (type) {
+    case 'tickets':
+      return 'Get Tickets';
+    case 'registration':
+      return 'Register Now';
+    case 'reservation':
+      return 'Reserve Table';
+    case 'booking':
+      return 'Book Activity';
+    case 'rsvp':
+      return 'RSVP';
+    case 'website':
+      return 'Visit Website';
+    case 'maps':
+      return 'View on Maps';
+    case 'cafe':
+    case 'food':
+    case 'nightlife':
+      return 'Reserve Table';
+    case 'culture':
+    case 'attraction':
+    case 'entertainment':
+      return 'Book Tickets';
+    default:
+      return 'Visit Official Page';
+  }
+}
+

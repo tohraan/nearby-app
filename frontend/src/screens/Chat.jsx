@@ -3,13 +3,14 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, MapPin, Sparkles, WifiOff, Loader2 } from 'lucide-react';
+import { Send, MapPin, Sparkles, WifiOff, Loader2, ExternalLink } from 'lucide-react';
 import { useGeolocation } from '../hooks/useGeolocation.js';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 import { api } from '../lib/api.js';
 import { getCachedPlaceById } from '../lib/db.js';
-import { CATEGORY_EMOJI, getPlaceImage } from '../lib/geo.js';
+import { CATEGORY_EMOJI, getPlaceImage, getActionableUrl, getActionLabel } from '../lib/geo.js';
 import { FALLBACK_PLACES } from '../lib/fallbackData.js';
+
 
 const STARTER_PROMPTS = [
   "☕️ Quiet cafe",
@@ -174,9 +175,21 @@ export default function Chat({ onNavigateToPlace }) {
                         <span>⭐ {place.rating || '4.8'}</span>
                       </div>
                     </div>
-                    <button className="neo-btn neo-btn--xs neo-btn--primary" style={{ padding: '4px 10px', fontSize: '11px', flexShrink: 0 }}>
-                      VIEW
-                    </button>
+                    <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                      <button className="neo-btn neo-btn--xs neo-btn--primary" style={{ padding: '4px 8px', fontSize: '11px' }}>
+                        VIEW
+                      </button>
+                      <a
+                        href={getActionableUrl(place)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="neo-btn neo-btn--xs neo-btn--accent"
+                        style={{ padding: '4px 8px', fontSize: '11px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {getActionLabel(place)} <ExternalLink size={10} />
+                      </a>
+                    </div>
                   </div>
                 ))}
               </div>

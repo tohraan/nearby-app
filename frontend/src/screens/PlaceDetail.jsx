@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, ChevronLeft, Star, Heart, CheckCircle2, Calendar, Clock, Users, Ticket, Compass, Car, Sparkles, Utensils, Coffee, ShieldCheck } from 'lucide-react';
+import { MapPin, ChevronLeft, Star, Heart, CheckCircle2, Calendar, Clock, Users, Ticket, Compass, Car, Sparkles, Utensils, Coffee, ShieldCheck, ExternalLink } from 'lucide-react';
 import { getCachedPlaceById, getSavedPlaceIds, savePlaceLocally, unsavePlaceLocally, getVisitedPlaceIds, addVisitedPlaceLocally, removeVisitedPlaceLocally } from '../lib/db.js';
 import { api } from '../lib/api.js';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
-import { CATEGORY_EMOJI, formatDistance, haversineKm, getPlaceImage } from '../lib/geo.js';
+import { CATEGORY_EMOJI, formatDistance, haversineKm, getPlaceImage, getActionableUrl, getActionLabel } from '../lib/geo.js';
 import { useGeolocation } from '../hooks/useGeolocation.js';
 import { queueAction } from '../lib/offlineSync.js';
 import { FALLBACK_PLACES } from '../lib/fallbackData.js';
+
 
 export default function PlaceDetail({ placeId, onBack }) {
   const [place, setPlace] = useState(null);
@@ -194,10 +195,20 @@ export default function PlaceDetail({ placeId, onBack }) {
               </div>
             </div>
 
-            {/* CTA Button */}
+            {/* CTA Buttons */}
             <button className="neo-btn neo-btn--primary" onClick={handleBookNow} style={{ width: '100%', marginTop: '6px', fontWeight: 900 }}>
               {bookedSuccess ? '✓ TABLE RESERVED! SEE YOU AT ' + bookingTime : `RESERVE TABLE FOR ${partySize} (${bookingTime})`}
             </button>
+            <a 
+              href={getActionableUrl(place)} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="neo-btn neo-btn--accent" 
+              style={{ width: '100%', marginTop: '8px', fontWeight: 900, textDecoration: 'none', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+            >
+              🌐 {getActionLabel(place)} (OFFICIAL SITE) <ExternalLink size={16} />
+            </a>
+
           </div>
         </div>
 
@@ -307,6 +318,16 @@ export default function PlaceDetail({ placeId, onBack }) {
           <button className="neo-btn neo-btn--primary" onClick={handleBookNow} style={{ width: '100%', fontWeight: 900 }}>
             {bookedSuccess ? '✓ PASS RESERVED! CONFIRMATION SENT' : `GET VISITOR PASS (${ticketTier.toUpperCase()})`}
           </button>
+          <a 
+            href={getActionableUrl(place)} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="neo-btn neo-btn--accent" 
+            style={{ width: '100%', marginTop: '8px', fontWeight: 900, textDecoration: 'none', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+          >
+            🎟️ {getActionLabel(place)} (OFFICIAL PORTAL) <ExternalLink size={16} />
+          </a>
+
         </div>
 
         {/* Directions & Mark Visited */}
@@ -378,6 +399,16 @@ export default function PlaceDetail({ placeId, onBack }) {
           <button className="neo-btn neo-btn--primary" onClick={handleBookNow} style={{ width: '100%', marginTop: '6px', fontWeight: 900 }}>
             {bookedSuccess ? '✓ SPOTS SECURED! CHECKOUT COMPLETE' : `CHECKOUT & SECURE ${partySize} SPOTS`}
           </button>
+          <a 
+            href={getActionableUrl(place)} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="neo-btn neo-btn--accent" 
+            style={{ width: '100%', marginTop: '8px', fontWeight: 900, textDecoration: 'none', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+          >
+            ⚡ {getActionLabel(place)} (OFFICIAL REGISTRATION) <ExternalLink size={16} />
+          </a>
+
         </div>
       </div>
 

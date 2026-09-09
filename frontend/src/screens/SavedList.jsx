@@ -3,12 +3,13 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Star, MapPin, Trash2 } from 'lucide-react';
+import { Star, MapPin, Trash2, ExternalLink } from 'lucide-react';
 import { getSavedPlaceIds, unsavePlaceLocally, getCachedPlaceById } from '../lib/db.js';
 import { api } from '../lib/api.js';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 import { queueAction } from '../lib/offlineSync.js';
-import { CATEGORY_EMOJI, getPlaceImage } from '../lib/geo.js';
+import { CATEGORY_EMOJI, getPlaceImage, getActionableUrl, getActionLabel } from '../lib/geo.js';
+
 
 export default function SavedList({ onNavigateToPlace }) {
   const [savedPlaces, setSavedPlaces] = useState([]);
@@ -135,13 +136,26 @@ export default function SavedList({ onNavigateToPlace }) {
                 </div>
               </div>
 
-              <button
-                className="neo-btn neo-btn--destructive neo-btn--icon"
-                onClick={(e) => { e.stopPropagation(); handleUnsave(place.id); }}
-                aria-label="Remove from saved"
-              >
-                <Trash2 size={18} />
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
+                <a
+                  href={getActionableUrl(place)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="neo-btn neo-btn--xs neo-btn--accent"
+                  style={{ textDecoration: 'none', fontWeight: 800, padding: '4px 8px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {getActionLabel(place)} <ExternalLink size={10} />
+                </a>
+                <button
+                  className="neo-btn neo-btn--destructive neo-btn--icon"
+                  style={{ width: '28px', height: '28px', padding: 0 }}
+                  onClick={(e) => { e.stopPropagation(); handleUnsave(place.id); }}
+                  aria-label="Remove from saved"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
             </div>
           ))}
         </div>

@@ -3,12 +3,14 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Users, Send, Calendar, MapPin, ChevronLeft } from 'lucide-react';
+import { Users, Send, Calendar, MapPin, ChevronLeft, ExternalLink } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { getCachedPlaceById } from '../lib/db.js';
 import { queueAction } from '../lib/offlineSync.js';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 import { getDeviceId } from '../lib/deviceId.js';
+import { CATEGORY_EMOJI, getActionableUrl, getActionLabel } from '../lib/geo.js';
+
 
 export default function GroupDetail({ groupId, onBack }) {
   const [group, setGroup] = useState(null);
@@ -148,9 +150,15 @@ export default function GroupDetail({ groupId, onBack }) {
             </div>
           )}
           {place && (
-            <div className="neo-badge neo-badge--blue">
-              <MapPin size={12} /> {place.name}
-            </div>
+            <a
+              href={getActionableUrl(place)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="neo-badge neo-badge--yellow"
+              style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+            >
+              <MapPin size={12} /> {place.name} — {getActionLabel(place)} <ExternalLink size={10} />
+            </a>
           )}
         </div>
       </div>
