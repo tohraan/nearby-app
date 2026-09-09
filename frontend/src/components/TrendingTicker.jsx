@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Flame, Star, Sparkles, MapPin, ExternalLink, ChevronRight } from 'lucide-react';
+import { Flame, Star, Sparkles, MapPin, ExternalLink, ChevronRight, Compass } from 'lucide-react';
 import { FALLBACK_PLACES } from '../lib/fallbackData.js';
 import { getPlaceImage, getActionableUrl } from '../lib/geo.js';
 
@@ -31,81 +31,80 @@ export default function TrendingTicker({ onNavigateToPlace }) {
       style={{
         width: '100%',
         backgroundColor: 'var(--color-cream)',
-        border: '3px solid var(--color-black)',
+        border: '3.5px solid var(--color-black)',
         borderRadius: '16px',
         boxShadow: '6px 6px 0 var(--color-black)',
         overflow: 'hidden',
-        marginBottom: '24px',
+        marginBottom: '28px',
         position: 'relative',
         boxSizing: 'border-box'
       }}
     >
-      {/* Top Banner Title Strip */}
+      {/* Top Banner Title Bar */}
       <div
         style={{
           backgroundColor: 'var(--color-yellow)',
-          borderBottom: '3px solid var(--color-black)',
-          padding: '10px 16px',
+          borderBottom: '3.5px solid var(--color-black)',
+          padding: '12px 20px',
           display: 'flex',
           alignItems: 'center',
           justify: 'space-between',
           flexWrap: 'wrap',
-          gap: '8px'
+          gap: '10px'
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div
             style={{
               backgroundColor: 'var(--color-pink)',
               color: 'var(--color-black)',
               border: '2px solid var(--color-black)',
-              borderRadius: '6px',
-              padding: '2px 8px',
-              fontSize: '11px',
+              borderRadius: '8px',
+              padding: '4px 10px',
+              fontSize: '12px',
               fontWeight: 900,
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '4px',
-              boxShadow: '2px 2px 0 var(--color-black)'
+              gap: '6px',
+              boxShadow: '2.5px 2.5px 0 var(--color-black)'
             }}
           >
-            <Flame size={14} fill="var(--color-black)" /> FEATURED SPOTS
+            <Flame size={16} fill="var(--color-black)" /> FEATURED SPOTS
           </div>
-          <span style={{ fontWeight: 900, fontSize: '14px', textTransform: 'uppercase', letterSpacing: '-0.01em' }}>
-            WHAT'S POPPING & TRENDING NOW
+          <span style={{ fontWeight: 900, fontSize: '15px', textTransform: 'uppercase', letterSpacing: '-0.01em' }}>
+            WHAT'S POPPING & TRENDING IN THE UAE
           </span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 800 }}>
-          <Sparkles size={14} color="var(--color-black)" />
-          <span>Live UAE Highlights</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: 900 }}>
+          <Sparkles size={16} color="var(--color-black)" />
+          <span className="neo-badge neo-badge--mint" style={{ padding: '2px 8px', fontSize: '10px' }}>LIVE HIGHLIGHTS</span>
         </div>
       </div>
 
       {/* Marquee Track Container */}
       <div
         style={{
-          padding: '14px 0',
+          padding: '18px 0',
           overflow: 'hidden',
           position: 'relative',
           width: '100%',
-          background: 'linear-gradient(90deg, var(--color-black) 0%, rgba(0,0,0,0.85) 100%)'
+          background: 'linear-gradient(90deg, #111111 0%, #1A1A1A 100%)'
         }}
       >
         <div
           className="marquee-track"
           style={{
             display: 'flex',
-            gap: '16px',
+            gap: '20px',
             width: 'max-content',
-            animation: 'headerMarquee 35s linear infinite',
+            animation: 'headerMarquee 38s linear infinite',
             willChange: 'transform'
           }}
         >
           {loopItems.map((item, idx) => {
             const place = FALLBACK_PLACES.find(p => p.id === item.id) || item;
             const bgImg = getPlaceImage(place);
-            const actionUrl = getActionableUrl(place);
 
             return (
               <div
@@ -113,19 +112,19 @@ export default function TrendingTicker({ onNavigateToPlace }) {
                 className="trending-card"
                 onClick={() => onNavigateToPlace?.(item.id)}
                 style={{
-                  width: '240px',
-                  height: '130px',
+                  width: '270px',
+                  height: '155px',
                   flexShrink: 0,
-                  borderRadius: '12px',
-                  border: '2.5px solid var(--color-paper)',
+                  borderRadius: '14px',
+                  border: '3px solid var(--color-paper)',
                   position: 'relative',
                   overflow: 'hidden',
                   cursor: 'pointer',
-                  boxShadow: '4px 4px 0 var(--color-black)',
-                  transition: 'transform 0.2s ease, boxShadow 0.2s ease'
+                  boxShadow: '5px 5px 0 var(--color-black)',
+                  transition: 'transform 0.25s ease, boxShadow 0.25s ease'
                 }}
               >
-                {/* Background Image */}
+                {/* Background Photo */}
                 <img
                   src={bgImg}
                   alt={item.name}
@@ -137,12 +136,12 @@ export default function TrendingTicker({ onNavigateToPlace }) {
                   }}
                 />
 
-                {/* Dark Gradient Overlay */}
+                {/* Gradient Vignette Overlay */}
                 <div
                   style={{
                     position: 'absolute',
                     inset: 0,
-                    background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.1) 100%)'
+                    background: 'linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.4) 55%, rgba(0,0,0,0.15) 100%)'
                   }}
                 />
 
@@ -150,57 +149,71 @@ export default function TrendingTicker({ onNavigateToPlace }) {
                 <div
                   style={{
                     position: 'absolute',
-                    top: '8px',
-                    left: '8px',
+                    top: '10px',
+                    left: '10px',
                     backgroundColor: 'var(--color-yellow)',
                     color: 'var(--color-black)',
-                    border: '1.5px solid var(--color-black)',
-                    borderRadius: '4px',
-                    padding: '2px 6px',
-                    fontSize: '9px',
+                    border: '2px solid var(--color-black)',
+                    borderRadius: '6px',
+                    padding: '3px 8px',
+                    fontSize: '10px',
                     fontWeight: 900,
-                    boxShadow: '1.5px 1.5px 0 var(--color-black)',
+                    boxShadow: '2px 2px 0 var(--color-black)',
                     textTransform: 'uppercase'
                   }}
                 >
                   {item.tag}
                 </div>
 
-                {/* Bottom Content */}
+                {/* Bottom Card Content */}
                 <div
                   style={{
                     position: 'absolute',
-                    bottom: '8px',
-                    left: '8px',
-                    right: '8px',
+                    bottom: '10px',
+                    left: '10px',
+                    right: '10px',
                     color: 'var(--color-paper)'
                   }}
                 >
                   <div
                     style={{
-                      fontSize: '13px',
+                      fontSize: '15px',
                       fontWeight: 900,
-                      lineHeight: 1.2,
+                      lineHeight: 1.15,
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
-                      textShadow: '0 2px 4px rgba(0,0,0,0.8)'
+                      textShadow: '0 2px 4px rgba(0,0,0,0.9)'
                     }}
                   >
                     {item.name}
                   </div>
                   <div
                     style={{
-                      fontSize: '10px',
+                      fontSize: '11px',
                       color: 'var(--color-yellow)',
-                      marginTop: '2px',
+                      marginTop: '4px',
                       display: 'flex',
                       alignItems: 'center',
-                      justify: 'space-between'
+                      justify: 'space-between',
+                      fontWeight: 800
                     }}
                   >
                     <span>⭐ {item.rating} • {item.city}</span>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', textDecoration: 'underline', fontWeight: 800 }}>
+                    <span
+                      style={{
+                        backgroundColor: 'var(--color-pink)',
+                        color: 'var(--color-black)',
+                        border: '1.5px solid var(--color-black)',
+                        borderRadius: '4px',
+                        padding: '1px 6px',
+                        fontSize: '9px',
+                        fontWeight: 900,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '2px'
+                      }}
+                    >
                       EXPLORE <ChevronRight size={10} />
                     </span>
                   </div>
@@ -221,8 +234,9 @@ export default function TrendingTicker({ onNavigateToPlace }) {
           animation-play-state: paused;
         }
         .trending-card:hover {
-          transform: translateY(-2px) scale(1.02);
+          transform: translateY(-4px) scale(1.03);
           border-color: var(--color-yellow) !important;
+          box-shadow: 7px 7px 0 var(--color-black) !important;
         }
       `}</style>
     </div>

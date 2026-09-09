@@ -234,57 +234,39 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
 
   return (
     <div className="app-shell__content">
-      {/* ─── Trending Continuous Ticker ─── */}
+      {/* ─── Big Featured Header Banner ─── */}
       <TrendingTicker onNavigateToPlace={onNavigateToPlace} onNavigateToGroup={onNavigateToGroup} />
 
-      {/* ─── Hero / Onboarding ─── */}
-      <div className="nearby-hero" style={{ position: 'relative', marginTop: '16px' }}>
-        <button 
-          className="neo-btn neo-btn--ghost neo-btn--icon"
-          style={{ position: 'absolute', top: 'var(--space-2)', right: 'var(--space-2)', background: 'var(--color-cream)' }}
-          onClick={() => {
-            if (notificationStatus === 'default') {
-              setShowNotificationPrompt(true);
-            }
-          }}
-          title="Enable Notifications"
-        >
-          <Bell size={20} color={notificationStatus === 'granted' ? 'var(--color-purple)' : 'var(--text-primary)'} />
-        </button>
-        
-        {profile.name && profile.name !== 'Guest User' ? (
-          <h1 className="nearby-hero__heading" style={{ fontSize: 'clamp(28px, 5vw, 42px)', lineHeight: 1.1, marginBottom: 'var(--space-2)' }}>
-            GOOD MORNING,<br />
-            <span>{profile.name.toUpperCase()}</span>
-          </h1>
-        ) : (
-          <h1 className="nearby-hero__heading" style={{ fontSize: 'clamp(28px, 5vw, 42px)', lineHeight: 1.1, marginBottom: 'var(--space-2)' }}>
-            WELCOME,<br />
-            <span>EXPLORER</span>
-          </h1>
-        )}
-        <p style={{ color: 'var(--text-muted)', fontSize: '15px' }}>
-          Discover curated places and experiences {isDefault ? 'in the UAE' : 'near you'}.
-        </p>
-      </div>
-
-      {/* ─── Controls ─── */}
-      <div className="nearby-controls">
-        <div className="nearby-controls__row">
+      {/* ─── Search Bar & Notification Bell Row ─── */}
+      <div className="nearby-controls" style={{ marginBottom: '20px' }}>
+        <div className="nearby-controls__row" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           <div style={{ flex: 1, position: 'relative' }}>
             <Search size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
             <input
               className="neo-input neo-input--large"
               type="text"
-              placeholder="Coffee then movies..."
+              placeholder="Coffee, rooftop bars, viewing decks..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              style={{ paddingLeft: '42px' }}
+              style={{ paddingLeft: '42px', height: '48px', fontSize: '15px' }}
             />
           </div>
+          <button 
+            className="neo-btn neo-btn--ghost neo-btn--icon"
+            style={{ width: '48px', height: '48px', background: 'var(--color-cream)', flexShrink: 0, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            onClick={() => {
+              if (notificationStatus === 'default') {
+                setShowNotificationPrompt(true);
+              }
+            }}
+            title="Enable Notifications"
+          >
+            <Bell size={20} color={notificationStatus === 'granted' ? 'var(--color-purple)' : 'var(--text-primary)'} />
+          </button>
         </div>
 
-        <div className="category-chips-wrapper">
+        {/* Category Filter Chips */}
+        <div className="category-chips-wrapper" style={{ marginTop: '12px' }}>
           <div className="category-chips">
             {CATEGORIES.map(cat => (
               <button
@@ -298,6 +280,7 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
           </div>
         </div>
       </div>
+
 
       {/* ─── Custom Offline English Map View (Visible by default in Split mode) ─── */}
       {(view === 'split' || view === 'map') && (

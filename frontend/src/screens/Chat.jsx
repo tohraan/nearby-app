@@ -267,67 +267,67 @@ export default function Chat({ onNavigateToPlace }) {
               {msg.text}
             </div>
 
-            {/* Render Recommended Places Cards Grid */}
+            {/* Render Gallery View Style Cards for Recommended Places */}
             {msg.places && msg.places.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '14px' }}>
                 <div style={{ fontSize: '11px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  🎯 RECOMMENDED SPOTS FOR YOU ({msg.places.length})
+                  🎯 RECOMMENDED SPOTS ({msg.places.length})
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '12px' }}>
                   {msg.places.map(place => (
                     <div
                       key={place.id}
-                      className="neo-card neo-card--clickable"
-                      style={{
-                        padding: '10px',
-                        backgroundColor: 'var(--color-cream)',
-                        display: 'flex',
-                        gap: '12px',
-                        alignItems: 'center'
-                      }}
+                      className="neo-card neo-card--clickable place-card"
+                      style={{ padding: '12px', backgroundColor: 'var(--color-cream)', width: '100%', display: 'flex', flexDirection: 'column' }}
                       onClick={() => onNavigateToPlace?.(place.id)}
                     >
-                      <img
-                        src={getPlaceImage(place)}
-                        alt={place.name}
-                        style={{
-                          width: '70px',
-                          height: '70px',
-                          borderRadius: '8px',
-                          objectFit: 'cover',
-                          border: '2px solid var(--color-black)',
-                          flexShrink: 0
-                        }}
-                      />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '14px', fontWeight: 900, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {place.name}
+                      <div className="place-card__image" style={{ position: 'relative', overflow: 'hidden', height: '130px', borderRadius: '10px', border: '2px solid var(--color-black)', marginBottom: '8px' }}>
+                        <img
+                          src={getPlaceImage(place)}
+                          alt={place.name}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                        />
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: '6px',
+                            left: '6px',
+                            backgroundColor: 'var(--color-yellow)',
+                            border: '2px solid var(--color-black)',
+                            borderRadius: '6px',
+                            padding: '2px 6px',
+                            fontSize: '10px',
+                            fontWeight: 800,
+                            boxShadow: '2px 2px 0 var(--color-black)',
+                            textTransform: 'uppercase'
+                          }}
+                        >
+                          {CATEGORY_EMOJI[place.category]} {place.category}
                         </div>
-                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontWeight: 800 }}>{CATEGORY_EMOJI[place.category]} {place.category}</span>
-                          <span>•</span>
-                          <span>⭐ {place.rating || '4.8'}</span>
-                          <span>•</span>
-                          <span>{place.city}</span>
-                        </div>
-                        <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
-                          <button
-                            className="neo-btn neo-btn--xs neo-btn--primary"
-                            style={{ padding: '3px 10px', fontSize: '11px', fontWeight: 900 }}
-                          >
-                            VIEW DETAILS
-                          </button>
-                          <a
-                            href={getActionableUrl(place)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="neo-btn neo-btn--xs neo-btn--accent"
-                            style={{ padding: '3px 10px', fontSize: '11px', fontWeight: 900, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {getActionLabel(place)} <ExternalLink size={10} />
-                          </a>
-                        </div>
+                      </div>
+                      <div className="place-card__name" style={{ fontSize: '15px', fontWeight: 800, lineHeight: 1.2 }}>{place.name}</div>
+                      <div className="place-card__meta" style={{ marginTop: '4px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span className="place-card__rating">⭐ {place.rating || '4.8'}</span>
+                        <span style={{ color: 'var(--text-muted)' }}>•</span>
+                        <span>{place.city}</span>
+                      </div>
+                      <div className="place-card__actions" style={{ marginTop: 'auto', paddingTop: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <button
+                          className="neo-btn neo-btn--xs neo-btn--primary"
+                          style={{ flex: 1, padding: '4px 6px', fontSize: '11px', fontWeight: 900 }}
+                        >
+                          VIEW
+                        </button>
+                        <a
+                          href={getActionableUrl(place)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="neo-btn neo-btn--xs neo-btn--accent"
+                          style={{ flex: 1, padding: '4px 6px', fontSize: '11px', fontWeight: 900, textDecoration: 'none', textAlign: 'center', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '2px' }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {getActionLabel(place)} <ExternalLink size={10} />
+                        </a>
                       </div>
                     </div>
                   ))}
@@ -406,15 +406,16 @@ export default function Chat({ onNavigateToPlace }) {
         <div ref={endRef} />
       </div>
 
-      {/* ─── Sticky Input Area ─── */}
+      {/* ─── Sticky Input Area (Positioned Further Down) ─── */}
       <div
         style={{
           position: 'sticky',
           bottom: 0,
           backgroundColor: 'var(--color-cream)',
-          paddingTop: '8px',
-          paddingBottom: '4px',
-          flexShrink: 0
+          paddingTop: '10px',
+          paddingBottom: '24px',
+          flexShrink: 0,
+          zIndex: 100
         }}
       >
         {/* Horizontal Starter Chips */}
