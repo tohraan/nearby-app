@@ -50,7 +50,7 @@ export default function App() {
   // Handle routing internally for this demo
   const renderScreen = () => {
     if (activePlaceId) {
-      return <PlaceDetail placeId={activePlaceId} onBack={() => setActivePlaceId(null)} />;
+      return <PlaceDetail placeId={activePlaceId} onBack={() => setActivePlaceId(null)} onNavigateToPlace={setActivePlaceId} />;
     }
     if (activeGroupId) {
       return <GroupDetail groupId={activeGroupId} onBack={() => setActiveGroupId(null)} />;

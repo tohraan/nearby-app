@@ -130,14 +130,14 @@ export default function Profile() {
                   borderRadius: '8px',
                   fontSize: '13px',
                   fontWeight: 600,
-                  border: '1.5px solid var(--color-black)',
+                  border: '2px solid var(--color-black)',
                   backgroundColor: isSelected ? 'var(--color-yellow)' : 'var(--color-white)',
                   color: 'var(--color-black)',
                   cursor: 'pointer',
-                  display: 'flex',
+                  display: 'inline-flex',
                   alignItems: 'center',
                   gap: '6px',
-                  boxShadow: isSelected ? '2px 2px 0 var(--color-black)' : 'none',
+                  boxShadow: isSelected ? '2px 2px 0 var(--color-black)' : '1px 1px 0 rgba(0,0,0,0.15)',
                   transition: 'all 0.15s ease'
                 }}
               >

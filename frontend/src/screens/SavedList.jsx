@@ -9,6 +9,7 @@ import { api } from '../lib/api.js';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 import { queueAction } from '../lib/offlineSync.js';
 import { CATEGORY_EMOJI, getPlaceImage, getActionableUrl, getActionLabel } from '../lib/geo.js';
+import { FALLBACK_PLACES } from '../lib/fallbackData.js';
 
 
 export default function SavedList({ onNavigateToPlace }) {
@@ -22,7 +23,11 @@ export default function SavedList({ onNavigateToPlace }) {
       const ids = await getSavedPlaceIds();
       const places = [];
       for (const id of ids) {
-        const place = await getCachedPlaceById(id);
+        let place = await getCachedPlaceById(id);
+        if (!place) {
+          // fallback to curated data set
+          place = FALLBACK_PLACES.find(fp => fp.id === id) || null;
+        }
         if (place) places.push(place);
       }
       setSavedPlaces(places);

@@ -287,7 +287,7 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
                 key={cat}
                 className={`category-chip ${category === cat ? 'category-chip--active' : ''}`}
                 onClick={() => setCategory(cat)}
-                style={category === cat ? { backgroundColor: 'var(--color-yellow)', color: 'var(--color-black)', borderColor: 'var(--color-black)' } : { backgroundColor: 'var(--color-white)' }}
+                style={category === cat ? { backgroundColor: 'var(--color-black)', color: 'var(--color-white)', borderColor: 'var(--color-black)' } : { backgroundColor: 'var(--color-white)' }}
               >
                 {cat !== 'all' && CATEGORY_EMOJI[cat]} {cat === 'all' ? 'All' : CATEGORY_LABELS[cat]}
               </button>

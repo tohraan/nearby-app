@@ -31,59 +31,115 @@ export default function CustomMap({
   const initialLat = userLat || 25.1972;
   const initialLng = userLng || 55.2744;
 
+  // Category color palette — solid fills matching list-view tags
+  const CATEGORY_PIN_COLORS = {
+    cafe:          { fill: '#C8A882', text: '#FFFFFF' },
+    food:          { fill: '#E8773A', text: '#FFFFFF' },
+    nightlife:     { fill: '#8E44AD', text: '#FFFFFF' },
+    attraction:    { fill: '#F4C542', text: '#1C1A17' },
+    culture:       { fill: '#9B59B6', text: '#FFFFFF' },
+    outdoor:       { fill: '#27AE60', text: '#FFFFFF' },
+    sports:        { fill: '#2980B9', text: '#FFFFFF' },
+    entertainment: { fill: '#E74C3C', text: '#FFFFFF' },
+    shopping:      { fill: '#E91E63', text: '#FFFFFF' },
+    community:     { fill: '#16A085', text: '#FFFFFF' },
+    other:         { fill: '#7F8C8D', text: '#FFFFFF' },
+  };
+
+  // Build a solid teardrop/circle pin HTML for a single place
+  const buildPinHtml = (category, isSelected, isGroup) => {
+    const colors = isGroup
+      ? { fill: '#FF2E93', text: '#FFFFFF' }
+      : (CATEGORY_PIN_COLORS[category] || CATEGORY_PIN_COLORS.other);
+    const size = isSelected ? 34 : 26;
+    const border = isSelected ? '3px solid #FFFFFF' : '2px solid #1C1A17';
+    const shadow = isSelected
+      ? '0 0 0 2px #1C1A17, 3px 3px 0 #1C1A17'
+      : '2px 2px 0 #1C1A17';
+    // Teardrop shape: circle with a bottom-point
+    return `
+      <div style="
+        position:relative;
+        width:${size}px;
+        height:${size}px;
+        background-color:${colors.fill};
+        border:${border};
+        border-radius:50% 50% 50% 0;
+        transform: rotate(-45deg);
+        box-shadow:${shadow};
+        cursor:pointer;
+      "></div>
+    `;
+  };
+
+  // Build a cluster bubble HTML
+  const buildClusterHtml = (count, dominantCategory) => {
+    const colors = CATEGORY_PIN_COLORS[dominantCategory] || CATEGORY_PIN_COLORS.other;
+    return `
+      <div style="
+        width:38px; height:38px;
+        background-color:${colors.fill};
+        border:2.5px solid #1C1A17;
+        border-radius:50%;
+        display:flex; align-items:center; justify-content:center;
+        font-size:13px; font-weight:800;
+        color:${colors.text};
+        box-shadow:3px 3px 0 #1C1A17;
+        cursor:pointer;
+      ">${count}</div>
+    `;
+  };
+
+  // Grid-based lightweight clustering: rounds lat/lng to cluster grid
+  const clusterItems = (items, zoom) => {
+    if (zoom >= 14) return items.map(item => ({ ...item, _isCluster: false, _clusterItems: [item] }));
+    const precision = zoom >= 12 ? 2 : 1; // 2 decimal ≈ 1.1km, 1 decimal ≈ 11km
+    const grid = {};
+    items.forEach(item => {
+      const key = `${item.lat.toFixed(precision)},${item.lng.toFixed(precision)}`;
+      if (!grid[key]) grid[key] = [];
+      grid[key].push(item);
+    });
+    return Object.values(grid).map(group => {
+      if (group.length === 1) return { ...group[0], _isCluster: false, _clusterItems: group };
+      const avgLat = group.reduce((s, i) => s + i.lat, 0) / group.length;
+      const avgLng = group.reduce((s, i) => s + i.lng, 0) / group.length;
+      const dominant = group[0]; // use first item's category for color
+      return {
+        ...dominant,
+        lat: avgLat,
+        lng: avgLng,
+        _isCluster: true,
+        _clusterCount: group.length,
+        _clusterItems: group,
+      };
+    });
+  };
+
   // Initialize Leaflet Map Instance
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
 
-    // Create Leaflet map instance centered on Dubai / UAE
     const map = L.map(mapRef.current, {
       center: [initialLat, initialLng],
       zoom: 13,
-      zoomControl: false, // Custom controls
+      zoomControl: false,
       attributionControl: false,
     });
 
-    // Map API key from environment variables
-    const mapApiKey =
-      (typeof import.meta !== 'undefined' && import.meta.env && (
-        import.meta.env.VITE_GOOGLE_MAPS_API_KEY ||
-        import.meta.env.VITE_MAP_API_KEY ||
-        import.meta.env.VITE_MAPBOX_TOKEN
-      )) || '';
-
-    let tileUrl = 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
-    let tileOptions = {
+    // CartoDB Positron — clean light basemap with minimal label clutter
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
       maxZoom: 19,
-      subdomains: ['0', '1', '2', '3'],
-      attribution: '&copy; Google Maps',
-    };
+      subdomains: 'abcd',
+      attribution: '&copy; CartoDB',
+    }).addTo(map);
 
-    if (mapApiKey) {
-      if (mapApiKey.startsWith('pk.')) {
-        tileUrl = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}?access_token=${mapApiKey}`;
-        tileOptions = {
-          maxZoom: 19,
-          attribution: '&copy; Mapbox',
-        };
-      } else {
-        tileUrl = `https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&key=${mapApiKey}`;
-      }
-    }
-
-    // High-Resolution UAE Google Maps Street Tile Layer
-    const tileLayer = L.tileLayer(tileUrl, tileOptions);
-    tileLayer.addTo(map);
-
-    // Create markers layer group
     const markersGroup = L.layerGroup().addTo(map);
     markersLayerRef.current = markersGroup;
-
     mapInstanceRef.current = map;
 
     const resizeObserver = new ResizeObserver(() => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.invalidateSize();
-      }
+      if (mapInstanceRef.current) mapInstanceRef.current.invalidateSize();
     });
     resizeObserver.observe(mapRef.current);
 
@@ -132,64 +188,35 @@ export default function CustomMap({
     const allItems = [
       ...places.map(p => ({ ...p, isGroup: false })),
       ...groups.filter(g => g.lat && g.lng).map(g => ({ ...g, isGroup: true })),
-    ];
+    ].filter(item => item.lat && item.lng);
 
-    allItems.forEach(item => {
-      if (!item.lat || !item.lng) return;
+    // Apply clustering at current zoom level
+    const currentZoom = map.getZoom();
+    const clustered = clusterItems(allItems, currentZoom);
 
-      const isVisited = visitedIds.has(item.id);
-      const isSelected = selectedPlaceId === item.id;
-      
-      // Category Pin Background matching global design tokens
-      let pinEmoji = CATEGORY_EMOJI[item.category] || '📍';
-      let pinBg = '#FFE8D6';
+    clustered.forEach(item => {
+      const isSelected = !item._isCluster && selectedPlaceId === item.id;
 
-      if (item.isGroup) {
-        pinEmoji = '🎉';
-        pinBg = '#F5B7D2';
-      } else if (item.category === 'cafe') {
-        pinBg = '#E8D5C4';
-      } else if (item.category === 'food') {
-        pinBg = '#FFE8D6';
-      } else if (item.category === 'nightlife') {
-        pinBg = '#F3E5F5';
-      } else if (item.category === 'attraction') {
-        pinBg = '#FCF3CF';
-      } else if (item.category === 'culture') {
-        pinBg = '#E8DAEF';
-      } else if (item.category === 'outdoor' || item.category === 'sports') {
-        pinBg = '#D4EFDF';
-      } else if (item.category === 'shopping') {
-        pinBg = '#FADBD8';
+      let iconHtml, iconSize, iconAnchor;
+
+      if (item._isCluster) {
+        // Render count bubble
+        iconHtml = buildClusterHtml(item._clusterCount, item.category);
+        iconSize = [38, 38];
+        iconAnchor = [19, 19];
+      } else {
+        // Render teardrop pin — rotated square = diamond/teardrop shape
+        iconHtml = buildPinHtml(item.category, isSelected, item.isGroup);
+        const pinSize = isSelected ? 34 : 26;
+        iconSize = [pinSize, pinSize];
+        iconAnchor = [pinSize / 2, pinSize]; // anchor at bottom tip
       }
 
-      // Selected active pin state: larger size + white outline ring
       const customIcon = L.divIcon({
         className: 'custom-neo-marker',
-        html: `
-          <div style="
-            position: relative;
-            background-color: ${pinBg};
-            border: 2px solid #1C1A17;
-            border-radius: ${item.isGroup ? '50%' : '10px 10px 10px 0'};
-            width: ${isSelected ? '44px' : '36px'};
-            height: ${isSelected ? '44px' : '36px'};
-            display: flex;
-            align-items: center;
-            justify: content;
-            justify-content: center;
-            font-size: ${isSelected ? '22px' : '18px'};
-            box-shadow: ${isSelected ? '0 0 0 3px #FFFFFF, 4px 4px 0 #1C1A17' : '3px 3px 0 #1C1A17'};
-            cursor: pointer;
-            transform: ${isSelected ? 'scale(1.15) translateY(-4px)' : 'scale(1)'};
-            transition: all 0.2s cubic-bezier(.2,.8,.2,1);
-          ">
-            <span>${pinEmoji}</span>
-            ${item.isGroup ? '<div style="position: absolute; inset: -4px; border-radius: 50%; border: 2px solid #FF2E93; animation: pulseRing 1.8s infinite;"></div>' : ''}
-          </div>
-        `,
-        iconSize: [36, 36],
-        iconAnchor: [18, 36],
+        html: iconHtml,
+        iconSize,
+        iconAnchor,
       });
 
       const marker = L.marker([item.lat, item.lng], {
@@ -197,21 +224,69 @@ export default function CustomMap({
         zIndexOffset: isSelected ? 800 : 100,
       });
 
-      marker.bindPopup(`
-        <div style="font-family: inherit; padding: 4px; min-width: 140px;">
-          <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #666;">${CATEGORY_EMOJI[item.category] || '📍'} ${item.category || 'spot'}</div>
-          <div style="font-family: var(--font-serif); font-size: 15px; font-weight: 700; margin: 2px 0; color: #1C1A17;">${item.name}</div>
-          ${item.rating ? `<div style="font-size: 12px; font-weight: 600; color: #1C1A17;">⭐ ${item.rating} / 5.0</div>` : ''}
-        </div>
-      `, { offset: [0, -32] });
+      if (item._isCluster) {
+        // Clicking a cluster zooms in to reveal individual pins
+        marker.on('click', () => {
+          map.flyTo([item.lat, item.lng], Math.min(currentZoom + 2, 16), { duration: 0.7 });
+        });
+      } else {
+        // Single place popup
+        marker.bindPopup(`
+          <div style="font-family: inherit; padding: 4px; min-width: 140px;">
+            <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #666;">${CATEGORY_EMOJI[item.category] || '📍'} ${item.category || 'spot'}</div>
+            <div style="font-family: var(--font-serif); font-size: 15px; font-weight: 700; margin: 2px 0; color: #1C1A17;">${item.name}</div>
+            ${item.rating ? `<div style="font-size: 12px; font-weight: 600; color: #1C1A17;">⭐ ${item.rating} / 5.0</div>` : ''}
+          </div>
+        `, { offset: [0, -16] });
 
-      marker.on('click', () => {
-        map.flyTo([item.lat, item.lng], Math.max(map.getZoom(), 15), { duration: 0.8 });
-        onSelectPlace?.(item.id);
-      });
+        marker.on('click', () => {
+          map.flyTo([item.lat, item.lng], Math.max(map.getZoom(), 15), { duration: 0.8 });
+          onSelectPlace?.(item.id);
+        });
+      }
 
       layer.addLayer(marker);
     });
+
+    // Re-cluster when zoom changes
+    const onZoomEnd = () => {
+      layer.clearLayers();
+      const newZoom = map.getZoom();
+      const reClustered = clusterItems(allItems, newZoom);
+      reClustered.forEach(item => {
+        const isItemSelected = !item._isCluster && selectedPlaceId === item.id;
+        let html, size, anchor;
+        if (item._isCluster) {
+          html = buildClusterHtml(item._clusterCount, item.category);
+          size = [38, 38]; anchor = [19, 19];
+        } else {
+          html = buildPinHtml(item.category, isItemSelected, item.isGroup);
+          const ps = isItemSelected ? 34 : 26;
+          size = [ps, ps]; anchor = [ps / 2, ps];
+        }
+        const icon = L.divIcon({ className: 'custom-neo-marker', html, iconSize: size, iconAnchor: anchor });
+        const m = L.marker([item.lat, item.lng], { icon, zIndexOffset: isItemSelected ? 800 : 100 });
+        if (item._isCluster) {
+          m.on('click', () => map.flyTo([item.lat, item.lng], Math.min(newZoom + 2, 16), { duration: 0.7 }));
+        } else {
+          m.bindPopup(`
+            <div style="font-family: inherit; padding: 4px; min-width: 140px;">
+              <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #666;">${CATEGORY_EMOJI[item.category] || '📍'} ${item.category || 'spot'}</div>
+              <div style="font-size: 15px; font-weight: 700; margin: 2px 0; color: #1C1A17;">${item.name}</div>
+              ${item.rating ? `<div style="font-size: 12px; font-weight: 600; color: #1C1A17;">⭐ ${item.rating} / 5.0</div>` : ''}
+            </div>
+          `, { offset: [0, -16] });
+          m.on('click', () => {
+            map.flyTo([item.lat, item.lng], Math.max(map.getZoom(), 15), { duration: 0.8 });
+            onSelectPlace?.(item.id);
+          });
+        }
+        layer.addLayer(m);
+      });
+    };
+
+    map.on('zoomend', onZoomEnd);
+    return () => { map.off('zoomend', onZoomEnd); };
   }, [places, groups, selectedPlaceId, visitedIds, onSelectPlace]);
 
   // Smooth fly to selected place

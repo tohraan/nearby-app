@@ -8,25 +8,28 @@ import React, { useState, useEffect } from 'react';
 import { 
   MapPin, ChevronLeft, Star, Heart, CheckCircle2, Calendar, Clock, 
   Users, Ticket, Compass, Car, Sparkles, Utensils, Coffee, ShieldCheck, 
-  ExternalLink, Navigation, Check, Share2, Info, Flame, Trophy
+  ExternalLink, Navigation, Check, Share2, Info, Flame, Trophy, Map
 } from 'lucide-react';
 import { getCachedPlaceById, getSavedPlaceIds, savePlaceLocally, unsavePlaceLocally, getVisitedPlaceIds, addVisitedPlaceLocally, removeVisitedPlaceLocally } from '../lib/db.js';
 import { api } from '../lib/api.js';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
-import { CATEGORY_EMOJI, formatDistance, haversineKm, getPlaceImage, getActionableUrl, getActionLabel } from '../lib/geo.js';
+import { CATEGORY_EMOJI, formatDistance, haversineKm, getPlaceImage, getActionableUrl, getActionLabel, FOOD_RESERVATION_CATEGORIES, TICKET_CATEGORIES } from '../lib/geo.js';
 import { useGeolocation } from '../hooks/useGeolocation.js';
 import { queueAction } from '../lib/offlineSync.js';
 import { FALLBACK_PLACES } from '../lib/fallbackData.js';
+import { getCachedPlaces } from '../lib/db.js';
 
-export default function PlaceDetail({ placeId, onBack }) {
+export default function PlaceDetail({ placeId, onBack, onNavigateToPlace }) {
   const [place, setPlace] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isSaved, setIsSaved] = useState(false);
   const [isVisited, setIsVisited] = useState(false);
   const [visitedCount, setVisitedCount] = useState(1);
+  const [ticketCount, setTicketCount] = useState(2);
   const [bookingTime, setBookingTime] = useState('7:00 PM');
   const [partySize, setPartySize] = useState(2);
   const [bookedSuccess, setBookedSuccess] = useState(false);
+  const [nearbyPlaces, setNearbyPlaces] = useState([]);
   const isOnline = useOnlineStatus();
   const { lat, lng } = useGeolocation();
 
@@ -36,15 +39,23 @@ export default function PlaceDetail({ placeId, onBack }) {
       if (!p) {
         p = FALLBACK_PLACES.find(fp => fp.id === placeId);
       }
-      if (p) {
-        setPlace(p);
-      }
+      if (p) setPlace(p);
+
       const savedIds = await getSavedPlaceIds();
       setIsSaved(savedIds.includes(placeId));
 
       const visitedIds = await getVisitedPlaceIds();
       setIsVisited(visitedIds.includes(placeId));
       setVisitedCount(visitedIds.length || 1);
+
+      // Load nearby recommendations from cache
+      try {
+        const allCached = await getCachedPlaces();
+        const nearby = allCached.filter(cp => cp.id !== placeId).slice(0, 3);
+        setNearbyPlaces(nearby.length >= 3 ? nearby : FALLBACK_PLACES.filter(fp => fp.id !== placeId).slice(0, 3));
+      } catch {
+        setNearbyPlaces(FALLBACK_PLACES.filter(fp => fp.id !== placeId).slice(0, 3));
+      }
 
       setLoading(false);
     }
@@ -111,7 +122,12 @@ export default function PlaceDetail({ placeId, onBack }) {
 
   const distance = (place.lat && place.lng && lat && lng) ? haversineKm(lat, lng, place.lat, place.lng) : null;
   const category = place.category || 'outdoor';
-  const nearbyRecommendations = FALLBACK_PLACES.filter(p => p.id !== place.id).slice(0, 3);
+  const nearbyRecommendations = nearbyPlaces;
+
+  // Booking panel type by category
+  const isFood = FOOD_RESERVATION_CATEGORIES.has(category);
+  const isTicket = TICKET_CATEGORIES.has(category);
+  const isOutdoor = !isFood && !isTicket;
 
   return (
     <div className="app-shell__content" style={{ maxWidth: '960px', margin: '0 auto', paddingBottom: '32px' }}>
@@ -387,7 +403,7 @@ export default function PlaceDetail({ placeId, onBack }) {
         </a>
       </div>
 
-      {/* ─── 4. PROGRESSIVE DISCLOSURE RESERVATION UX ─── */}
+      {/* ─── 4. CATEGORY-AWARE ACTION PANEL ─── */}
       <div
         className="neo-card"
         style={{
@@ -399,119 +415,157 @@ export default function PlaceDetail({ placeId, onBack }) {
           marginBottom: '32px'
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-          <div>
-            <h3 style={{ fontSize: '18px', fontWeight: 900, textTransform: 'uppercase', margin: 0, letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Utensils size={20} /> RESERVE A TABLE OR SLOT
-            </h3>
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px', fontWeight: 700 }}>
-              Select party size and time to confirm your spot
+        {isFood && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: 900, textTransform: 'uppercase', margin: 0, letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Utensils size={20} /> RESERVE A TABLE
+                </h3>
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px', fontWeight: 700 }}>
+                  Select party size and time to confirm your spot
+                </div>
+              </div>
+              <span className="neo-badge neo-badge--mint" style={{ fontSize: '10px', fontWeight: 900 }}>⚡ INSTANT CONFIRMATION</span>
             </div>
-          </div>
-          <span className="neo-badge neo-badge--mint" style={{ fontSize: '10px', fontWeight: 900 }}>
-            ⚡ INSTANT CONFIRMATION
-          </span>
-        </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-          {/* Step 1: Party Size Choice */}
-          <div>
-            <label style={{ fontSize: '12px', fontWeight: 900, textTransform: 'uppercase', display: 'block', marginBottom: '8px', letterSpacing: '0.04em' }}>
-              1. HOW MANY GUESTS?
-            </label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
-              {[1, 2, 4, 6].map(num => (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 900, textTransform: 'uppercase', display: 'block', marginBottom: '8px', letterSpacing: '0.04em' }}>1. HOW MANY GUESTS?</label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+                  {[1, 2, 4, 6].map(num => (
+                    <button
+                      key={num}
+                      className={`neo-btn ${partySize === num ? 'neo-btn--primary' : 'neo-btn--secondary'}`}
+                      onClick={() => setPartySize(num)}
+                      style={{ fontWeight: 900, padding: '10px 0', fontSize: '13px', backgroundColor: partySize === num ? 'var(--color-yellow)' : 'var(--color-cream)', border: '2px solid var(--color-black)', boxShadow: partySize === num ? '3px 3px 0 var(--color-black)' : '1.5px 1.5px 0 var(--color-black)' }}
+                    >
+                      {num} {num === 1 ? 'Guest' : 'Guests'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.04em' }}>2. AVAILABLE TONIGHT</label>
+                  <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--color-pink)' }}>🔥 Recommended: 7:00 PM</span>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '6px', scrollbarWidth: 'none' }}>
+                  {['6:00 PM', '6:30 PM', '7:00 PM', '7:30 PM', '8:00 PM', '8:30 PM'].map(t => {
+                    const isSelected = bookingTime === t;
+                    const isRecommended = t === '7:00 PM';
+                    return (
+                      <button
+                        key={t}
+                        className={`neo-btn ${isSelected ? 'neo-btn--accent' : 'neo-btn--secondary'}`}
+                        onClick={() => setBookingTime(t)}
+                        style={{ whiteSpace: 'nowrap', fontWeight: 900, padding: '8px 14px', fontSize: '13px', backgroundColor: isSelected ? 'var(--color-pink)' : (isRecommended ? 'var(--color-yellow)' : 'var(--color-cream)'), border: '2px solid var(--color-black)', boxShadow: isSelected ? '3px 3px 0 var(--color-black)' : '1.5px 1.5px 0 var(--color-black)' }}
+                      >
+                        {isRecommended && '⭐ '} {t}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
                 <button
-                  key={num}
-                  className={`neo-btn ${partySize === num ? 'neo-btn--primary' : 'neo-btn--secondary'}`}
-                  onClick={() => setPartySize(num)}
-                  style={{
-                    fontWeight: 900,
-                    padding: '10px 0',
-                    fontSize: '13px',
-                    backgroundColor: partySize === num ? 'var(--color-yellow)' : 'var(--color-cream)',
-                    border: '2px solid var(--color-black)',
-                    boxShadow: partySize === num ? '3px 3px 0 var(--color-black)' : '1.5px 1.5px 0 var(--color-black)'
-                  }}
+                  className="neo-btn neo-btn--primary"
+                  onClick={handleBookNow}
+                  style={{ height: '50px', fontWeight: 900, fontSize: '15px', backgroundColor: 'var(--color-yellow)', border: '2.5px solid var(--color-black)', boxShadow: '4px 4px 0 var(--color-black)' }}
                 >
-                  {num} {num === 1 ? 'Guest' : 'Guests'}
+                  {bookedSuccess
+                    ? `✓ RESERVED FOR ${partySize} GUESTS AT ${bookingTime}!`
+                    : `RESERVE TABLE FOR ${partySize} (${bookingTime}) →`}
                 </button>
-              ))}
+                <a href={getActionableUrl(place)} target="_blank" rel="noopener noreferrer" style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-secondary)', textAlign: 'center', marginTop: '4px', textDecoration: 'underline' }}>
+                  Or reserve directly through official website ↗
+                </a>
+              </div>
             </div>
-          </div>
+          </>
+        )}
 
-          {/* Step 2: Recommended & Available Time Slots */}
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <label style={{ fontSize: '12px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                2. AVAILABLE TONIGHT
-              </label>
-              <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--color-pink)' }}>
-                🔥 Recommended: 7:00 PM
-              </span>
+        {isTicket && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: 900, textTransform: 'uppercase', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Ticket size={20} /> BOOK YOUR TICKETS
+                </h3>
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px', fontWeight: 700 }}>Select ticket quantity below</div>
+              </div>
+              <span className="neo-badge neo-badge--lavender" style={{ fontSize: '10px', fontWeight: 900 }}>🎟️ SKIP THE QUEUE</span>
             </div>
-            <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '6px', scrollbarWidth: 'none' }}>
-              {['6:00 PM', '6:30 PM', '7:00 PM', '7:30 PM', '8:00 PM', '8:30 PM'].map(t => {
-                const isSelected = bookingTime === t;
-                const isRecommended = t === '7:00 PM';
-                return (
-                  <button
-                    key={t}
-                    className={`neo-btn ${isSelected ? 'neo-btn--accent' : 'neo-btn--secondary'}`}
-                    onClick={() => setBookingTime(t)}
-                    style={{
-                      whiteSpace: 'nowrap',
-                      fontWeight: 900,
-                      padding: '8px 14px',
-                      fontSize: '13px',
-                      backgroundColor: isSelected ? 'var(--color-pink)' : (isRecommended ? 'var(--color-yellow)' : 'var(--color-cream)'),
-                      border: '2px solid var(--color-black)',
-                      boxShadow: isSelected ? '3px 3px 0 var(--color-black)' : '1.5px 1.5px 0 var(--color-black)'
-                    }}
-                  >
-                    {isRecommended && '⭐ '} {t}
-                  </button>
-                );
-              })}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 900, textTransform: 'uppercase', display: 'block', marginBottom: '8px', letterSpacing: '0.04em' }}>TICKETS</label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
+                  {[1, 2, 3, 4, 6].map(num => (
+                    <button
+                      key={num}
+                      className="neo-btn neo-btn--secondary"
+                      onClick={() => setTicketCount(num)}
+                      style={{ fontWeight: 900, padding: '10px 0', fontSize: '14px', backgroundColor: ticketCount === num ? 'var(--color-yellow)' : 'var(--color-cream)', border: '2px solid var(--color-black)', boxShadow: ticketCount === num ? '3px 3px 0 var(--color-black)' : '1.5px 1.5px 0 var(--color-black)' }}
+                    >
+                      {num}×
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <a
+                href={getActionableUrl(place)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="neo-btn neo-btn--primary"
+                style={{ height: '50px', fontWeight: 900, fontSize: '15px', backgroundColor: 'var(--color-yellow)', border: '2.5px solid var(--color-black)', boxShadow: '4px 4px 0 var(--color-black)', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+              >
+                <Ticket size={18} /> BOOK {ticketCount} TICKET{ticketCount !== 1 ? 'S' : ''} →
+              </a>
             </div>
-          </div>
+          </>
+        )}
 
-          {/* Action CTAs */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
-            <button
-              className="neo-btn neo-btn--primary"
-              onClick={handleBookNow}
-              style={{
-                height: '50px',
-                fontWeight: 900,
-                fontSize: '15px',
-                backgroundColor: 'var(--color-yellow)',
-                border: '2.5px solid var(--color-black)',
-                boxShadow: '4px 4px 0 var(--color-black)'
-              }}
-            >
-              {bookedSuccess
-                ? `✓ RESERVED FOR ${partySize} GUESTS AT ${bookingTime}!`
-                : `RESERVE TABLE FOR ${partySize} (${bookingTime}) →`}
-            </button>
+        {isOutdoor && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: 900, textTransform: 'uppercase', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Compass size={20} /> PLAN YOUR VISIT
+                </h3>
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px', fontWeight: 700 }}>Open daily · Free entry · No booking required</div>
+              </div>
+            </div>
 
-            <a
-              href={getActionableUrl(place)}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                fontSize: '12px',
-                fontWeight: 800,
-                color: 'var(--text-secondary)',
-                textAlign: 'center',
-                marginTop: '4px',
-                textDecoration: 'underline'
-              }}
-            >
-              Or reserve directly through official website ↗
-            </a>
-          </div>
-        </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div className="neo-card" style={{ padding: '12px', backgroundColor: 'var(--color-cream)', border: '2px solid var(--color-black)', boxShadow: '2px 2px 0 var(--color-black)', textAlign: 'center' }}>
+                  <div style={{ fontSize: '20px', marginBottom: '4px' }}>🌅</div>
+                  <div style={{ fontSize: '12px', fontWeight: 900 }}>BEST TIME</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>Golden hour · 5–7 PM</div>
+                </div>
+                <div className="neo-card" style={{ padding: '12px', backgroundColor: 'var(--color-cream)', border: '2px solid var(--color-black)', boxShadow: '2px 2px 0 var(--color-black)', textAlign: 'center' }}>
+                  <div style={{ fontSize: '20px', marginBottom: '4px' }}>⏱️</div>
+                  <div style={{ fontSize: '12px', fontWeight: 900 }}>VISIT TIME</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>1–2 hours typical</div>
+                </div>
+              </div>
+
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`}
+                target="_blank"
+                rel="noreferrer"
+                className="neo-btn neo-btn--primary"
+                style={{ height: '50px', fontWeight: 900, fontSize: '15px', backgroundColor: 'var(--color-yellow)', border: '2.5px solid var(--color-black)', boxShadow: '4px 4px 0 var(--color-black)', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+              >
+                <Navigation size={18} /> GET DIRECTIONS →
+              </a>
+            </div>
+          </>
+        )}
       </div>
 
       {/* ─── 5. WHY PEOPLE LIKE IT / KEY ATTRIBUTES ─── */}
@@ -570,7 +624,7 @@ export default function PlaceDetail({ placeId, onBack }) {
                 display: 'flex',
                 flexDirection: 'column'
               }}
-              onClick={() => onBack()}
+              onClick={() => onNavigateToPlace ? onNavigateToPlace(rec.id) : onBack()}
             >
               <div
                 className="place-card__image"
