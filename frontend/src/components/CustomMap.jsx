@@ -41,15 +41,35 @@ export default function CustomMap({
       attributionControl: false,
     });
 
-    // High-Resolution CartoDB Voyager Real-Time UAE Street Tile Layer (Google Maps style)
-    const tileLayer = L.tileLayer(
-      'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-      {
-        maxZoom: 19,
-        subdomains: 'abcd',
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    // Map API key from environment variables (Google Maps or Mapbox key)
+    const mapApiKey =
+      (typeof import.meta !== 'undefined' && import.meta.env && (
+        import.meta.env.VITE_GOOGLE_MAPS_API_KEY ||
+        import.meta.env.VITE_MAP_API_KEY ||
+        import.meta.env.VITE_MAPBOX_TOKEN
+      )) || '';
+
+    let tileUrl = 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
+    let tileOptions = {
+      maxZoom: 19,
+      subdomains: ['0', '1', '2', '3'],
+      attribution: '&copy; <a href="https://maps.google.com" target="_blank" rel="noreferrer">Google Maps</a>',
+    };
+
+    if (mapApiKey) {
+      if (mapApiKey.startsWith('pk.')) {
+        tileUrl = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}?access_token=${mapApiKey}`;
+        tileOptions = {
+          maxZoom: 19,
+          attribution: '&copy; <a href="https://www.mapbox.com/" target="_blank" rel="noreferrer">Mapbox</a>',
+        };
+      } else {
+        tileUrl = `https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&key=${mapApiKey}`;
       }
-    );
+    }
+
+    // High-Resolution UAE Google Maps Street Tile Layer
+    const tileLayer = L.tileLayer(tileUrl, tileOptions);
     tileLayer.addTo(map);
 
     // Create markers layer group
