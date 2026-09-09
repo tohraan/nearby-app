@@ -1,11 +1,12 @@
 /**
  * NearbyFeed.jsx — Discovery Screen
  * Features 2-button view toggle (List & Map), top right Emirate/City & Distance filters,
- * category chip bar, and an endless "Popular Near You" grid with infinite scroll.
+ * category chip bar, 1-tap quick sort pills (Closest, Top Rated, Trending),
+ * and an endless "Popular Near You" grid with infinite scroll.
  */
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Search, MapPin, List, Map as MapIcon, Star, Bell, ExternalLink } from 'lucide-react';
+import { Search, MapPin, List, Map as MapIcon, Star, Bell, ExternalLink, ArrowUpDown, RotateCcw } from 'lucide-react';
 import { useGeolocation } from '../hooks/useGeolocation.js';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 import { getCachedPlaces, getSavedPlaceIds, savePlaceLocally, unsavePlaceLocally, getVisitedPlaceIds } from '../lib/db.js';
@@ -19,7 +20,6 @@ import TrendingTicker from '../components/TrendingTicker.jsx';
 
 const CATEGORIES = ['all', 'food', 'cafe', 'nightlife', 'entertainment', 'outdoor', 'sports', 'culture', 'attraction', 'shopping'];
 
-const CITIES = ['all', 'Dubai', 'Abu Dhabi', 'Sharjah', 'Ras Al Khaimah', 'Ajman'];
 
 const DISTANCES = [
   { label: 'Any Radius', val: 'all' },
@@ -43,6 +43,7 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
   const [search, setSearch] = useState('');
   const [selectedCity, setSelectedCity] = useState('all');
   const [selectedDistance, setSelectedDistance] = useState('all');
+  const [sortBy, setSortBy] = useState('distance'); // 'distance' | 'rating' | 'trending'
   const [view, setView] = useState('list'); // 'list' vs 'map'
   
   // Infinite Scroll Pagination
@@ -88,12 +89,12 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
       setLoading(false);
     }
     load();
-  }, []);
+  }, [isOnline]);
 
   // Reset infinite scroll pagination when filters change
   useEffect(() => {
     setPage(1);
-  }, [category, search, selectedCity, selectedDistance]);
+  }, [category, search, selectedCity, selectedDistance, sortBy]);
 
   // Master Filter & Sort Engine
   const filteredPlaces = useMemo(() => {
@@ -127,8 +128,24 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
       );
     }
 
+    // Quick Sort Engine
+    if (sortBy === 'rating') {
+      result = [...result].sort((a, b) => {
+        const ratingA = Number(a.rating) || 0;
+        const ratingB = Number(b.rating) || 0;
+        if (ratingB !== ratingA) return ratingB - ratingA;
+        return a.distance - b.distance;
+      });
+    } else if (sortBy === 'trending') {
+      result = [...result].sort((a, b) => {
+        const scoreA = (Number(a.rating) || 3) * 2 - (a.distance * 0.25);
+        const scoreB = (Number(b.rating) || 3) * 2 - (b.distance * 0.25);
+        return scoreB - scoreA;
+      });
+    }
+
     return result;
-  }, [places, lat, lng, selectedCity, selectedDistance, category, search]);
+  }, [places, lat, lng, selectedCity, selectedDistance, category, search, sortBy]);
 
   // Infinite Scroll Paginated Subset
   const visiblePlaces = useMemo(() => {
@@ -137,23 +154,16 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
 
   const hasMore = visiblePlaces.length < filteredPlaces.length;
 
-  // IntersectionObserver for Continuous Infinite Scroll
-  useEffect(() => {
-    const target = observerTargetRef.current;
-    if (!target || !hasMore) return;
+  const handleResetFilters = () => {
+    setCategory('all');
+    setSearch('');
+    setSelectedCity('all');
+    setSelectedDistance('all');
+    setSortBy('distance');
+    setPage(1);
+  };
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          setPage(prev => prev + 1);
-        }
-      },
-      { rootMargin: '300px' }
-    );
-
-    observer.observe(target);
-    return () => observer.disconnect();
-  }, [hasMore]);
+  const hasActiveFilters = category !== 'all' || search || selectedCity !== 'all' || selectedDistance !== 'all' || sortBy !== 'distance';
 
   // Save/unsave handler
   const handleToggleSave = useCallback(async (placeId) => {
@@ -187,6 +197,12 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
       const permission = await Notification.requestPermission();
       setNotificationStatus(permission);
       setShowNotificationPrompt(false);
+      if (permission === 'granted') {
+        new Notification('Notifications Enabled!', {
+          body: 'We will notify you about nearby hidden gems.',
+          icon: '/favicon.ico'
+        });
+      }
     } catch (error) {
       console.error('Error requesting notification permission:', error);
     }
@@ -319,21 +335,61 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
             ))}
           </div>
         </div>
+
+        {/* Quick Sort Pills */}
+        <div className="quick-filter-bar" style={{ marginTop: '12px' }}>
+          <div className="quick-filter-group">
+            <span className="quick-filter-label">
+              <ArrowUpDown size={12} /> Sort:
+            </span>
+            <button
+              type="button"
+              className={`pill-btn ${sortBy === 'distance' ? 'pill-btn--active' : ''}`}
+              onClick={() => setSortBy('distance')}
+              title="Sort places by closest distance"
+            >
+              📍 Closest
+            </button>
+            <button
+              type="button"
+              className={`pill-btn ${sortBy === 'rating' ? 'pill-btn--active' : ''}`}
+              onClick={() => setSortBy('rating')}
+              title="Sort places by highest rating"
+            >
+              ⭐ Top Rated
+            </button>
+            <button
+              type="button"
+              className={`pill-btn ${sortBy === 'trending' ? 'pill-btn--active' : ''}`}
+              onClick={() => setSortBy('trending')}
+              title="Sort places by trending popularity"
+            >
+              🔥 Trending
+            </button>
+          </div>
+
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="neo-btn neo-btn--ghost neo-btn--xs"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 800, padding: '4px 8px', background: 'var(--bg-surface)' }}
+            >
+              <RotateCcw size={12} /> Reset Filters
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* ─── Full Map View (When Map toggle selected) ─── */}
+      {/* ─── Map View (Visible in 'map' mode) ─── */}
       {view === 'map' && (
         <div 
           className="map-container" 
           style={{ 
             position: 'relative', 
             width: '100%', 
-            height: 'clamp(550px, 78vh, 800px)',
-            marginBottom: 'var(--space-5)',
-            borderRadius: '16px',
-            overflow: 'hidden',
-            border: '3px solid var(--color-black)',
-            boxShadow: '6px 6px 0 var(--color-black)'
+            height: 'clamp(550px, 75vh, 800px)',
+            marginBottom: 'var(--space-6)'
           }}
         >
           <CustomMap
@@ -347,7 +403,7 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
             visitedIds={visitedIds}
           />
           
-          {/* Floating Bottom Card on Map Selection */}
+          {/* Floating Place Sheet in Map View */}
           {selectedLocation && (
             <div 
               className="neo-card" 
@@ -361,12 +417,12 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '8px',
-                backgroundColor: 'var(--color-paper)'
+                animation: 'slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards'
               }}
             >
               <button 
                 onClick={() => setSelectedPlaceId(null)}
-                style={{ position: 'absolute', top: '8px', right: '8px', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
+                style={{ position: 'absolute', top: '8px', right: '8px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', fontWeight: 900 }}
               >
                 ✕
               </button>
@@ -377,6 +433,12 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
                   <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>{selectedLocation.name}</h3>
                   <div style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <span>{selectedLocation.category}</span>
+                    {selectedLocation.city && (
+                      <>
+                        <span>•</span>
+                        <span>{selectedLocation.city}</span>
+                      </>
+                    )}
                     {selectedLocation.distance !== undefined && (
                       <>
                         <span>•</span>
@@ -387,21 +449,39 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
                 </div>
               </div>
               
-              <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                <button className="neo-btn neo-btn--primary" onClick={() => onNavigateToPlace?.(selectedLocation.id)} style={{ flex: 1 }}>
-                  View Details
-                </button>
-                <a
-                  href={getActionableUrl(selectedLocation)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="neo-btn neo-btn--accent"
-                  style={{ flex: 1, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontSize: '12px', fontWeight: 900 }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {getActionLabel(selectedLocation)} <ExternalLink size={12} />
-                </a>
-              </div>
+              {selectedLocation.isGroup ? (
+                <>
+                  <div style={{ fontSize: '14px', margin: '4px 0' }}>
+                    <strong>Activity:</strong> {selectedLocation.activity_type} <br/>
+                    <strong>Spots:</strong> {selectedLocation.member_count} / {selectedLocation.max_people || 'Unlimited'}
+                  </div>
+                  <button className="neo-btn neo-btn--primary" onClick={() => onNavigateToGroup?.(selectedLocation.id)}>
+                    View Meetup
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: '14px', margin: '4px 0', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span>⭐ {selectedLocation.rating || 'New'}</span>
+                    <span>{selectedLocation.city}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                    <button className="neo-btn neo-btn--primary" onClick={() => onNavigateToPlace?.(selectedLocation.id)} style={{ flex: 1 }}>
+                      View Place
+                    </button>
+                    <a
+                      href={getActionableUrl(selectedLocation)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="neo-btn neo-btn--accent"
+                      style={{ flex: 1, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontSize: '12px', fontWeight: 900 }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {getActionLabel(selectedLocation)} <ExternalLink size={12} />
+                    </a>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -411,12 +491,25 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
       {view === 'list' && (
         <div style={{ marginBottom: '32px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
-            <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 900, letterSpacing: '-0.02em' }}>
-              Popular Near You ({filteredPlaces.length})
-            </h3>
-            <span style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-muted)' }}>
-              Showing {visiblePlaces.length} of {filteredPlaces.length} places
-            </span>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 900, letterSpacing: '-0.02em' }}>
+                {sortBy === 'rating' ? '⭐ Top Rated Spots' : sortBy === 'trending' ? '🔥 Trending Spots' : 'Popular Near You'} ({filteredPlaces.length})
+              </h3>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                Showing {visiblePlaces.length} of {filteredPlaces.length} places • Sorted by {sortBy === 'rating' ? 'highest rating' : sortBy === 'trending' ? 'trending score' : 'proximity'}
+              </div>
+            </div>
+
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="neo-btn neo-btn--ghost neo-btn--xs"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 800, padding: '4px 8px', background: 'var(--bg-surface)' }}
+              >
+                <RotateCcw size={12} /> Reset
+              </button>
+            )}
           </div>
 
           {visiblePlaces.length === 0 ? (
