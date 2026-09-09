@@ -139,44 +139,64 @@ export default function CustomMap({
 
       const isVisited = visitedIds.has(item.id);
       const isSelected = selectedPlaceId === item.id;
-      const emoji = CATEGORY_EMOJI[item.category] || '📍';
-      const bgColor = item.isGroup
-        ? 'var(--color-pink)'
-        : (isSelected ? 'var(--color-mint)' : 'var(--color-yellow)');
+      
+      // Determine Pin Type & Styling based on legend categories
+      let pinEmoji = '📍';
+      let pinBg = 'var(--color-yellow)';
+
+      if (item.isGroup) {
+        pinEmoji = '🎉';
+        pinBg = 'var(--color-pink)';
+      } else if (item.category === 'cafe' || item.category === 'food' || item.category === 'nightlife') {
+        pinEmoji = item.category === 'cafe' ? '☕' : '🌮';
+        pinBg = 'var(--color-yellow)';
+      } else if (item.category === 'attraction' || item.category === 'culture' || item.category === 'shopping') {
+        pinEmoji = item.category === 'culture' ? '🏛️' : '⭐';
+        pinBg = 'var(--color-mint)';
+      } else if (item.category === 'outdoor' || item.category === 'sports') {
+        pinEmoji = '🏖️';
+        pinBg = 'var(--color-sky)';
+      }
 
       const customIcon = L.divIcon({
         className: 'custom-neo-marker',
         html: `
           <div style="
-            background-color: ${bgColor};
+            position: relative;
+            background-color: ${pinBg};
             border: ${isSelected ? '3px' : '2.5px'} solid #000000;
-            border-radius: ${item.isGroup ? '50%' : '10px 10px 10px 0'};
-            padding: 4px 8px;
+            border-radius: ${item.isGroup ? '50%' : '12px 12px 12px 0'};
+            width: ${isSelected ? '44px' : '36px'};
+            height: ${isSelected ? '44px' : '36px'};
             display: flex;
             align-items: center;
-            gap: 4px;
+            justify-content: center;
+            font-size: ${isSelected ? '22px' : '18px'};
             box-shadow: ${isSelected ? '5px 5px 0 #000000' : '3px 3px 0 #000000'};
             cursor: pointer;
-            white-space: nowrap;
-            font-size: 13px;
-            font-weight: 900;
-            color: #000000;
-            transform: scale(${isSelected ? '1.15' : '1'});
+            transform: scale(${isSelected ? '1.2' : '1'});
             transition: transform 0.2s ease;
           ">
-            <span>${emoji}</span>
-            <span style="max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${item.name}</span>
-            ${item.rating ? `<span style="font-size: 10px; opacity: 0.85;">★${item.rating}</span>` : ''}
+            <span>${pinEmoji}</span>
+            ${item.isGroup ? '<div style="position: absolute; inset: -4px; border-radius: 50%; border: 2px solid #FF2E93; animation: pulseRing 1.8s infinite;"></div>' : ''}
           </div>
         `,
-        iconSize: [120, 36],
-        iconAnchor: [20, 36],
+        iconSize: [36, 36],
+        iconAnchor: [18, 36],
       });
 
       const marker = L.marker([item.lat, item.lng], {
         icon: customIcon,
         zIndexOffset: isSelected ? 800 : 100,
       });
+
+      marker.bindPopup(`
+        <div style="font-family: inherit; padding: 4px; min-width: 140px;">
+          <div style="font-size: 10px; font-weight: 900; text-transform: uppercase; color: #555;">${CATEGORY_EMOJI[item.category] || '📍'} ${item.category || 'spot'}</div>
+          <div style="font-size: 14px; font-weight: 900; margin: 2px 0; color: #000;">${item.name}</div>
+          ${item.rating ? `<div style="font-size: 12px; font-weight: 800; color: #000;">⭐ ${item.rating} / 5.0</div>` : ''}
+        </div>
+      `, { offset: [0, -32] });
 
       marker.on('click', () => {
         map.flyTo([item.lat, item.lng], Math.max(map.getZoom(), 15), { duration: 0.8 });
@@ -232,6 +252,46 @@ export default function CustomMap({
     >
       {/* ─── Leaflet Real-Time UAE Map Element ─── */}
       <div ref={mapRef} style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }} />
+
+      {/* ─── Map Legend Overlay (Bottom Left) ─── */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: '16px',
+          left: '16px',
+          zIndex: 500,
+          backgroundColor: 'var(--color-paper)',
+          border: '2.5px solid var(--color-black)',
+          borderRadius: '12px',
+          padding: '10px 14px',
+          boxShadow: '4px 4px 0 var(--color-black)',
+          fontSize: '11px',
+          fontWeight: 900,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '6px'
+        }}
+      >
+        <div style={{ textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: '2px', fontSize: '10px' }}>
+          🗺️ MAP LEGEND
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ width: '22px', height: '22px', borderRadius: '50%', backgroundColor: 'var(--color-yellow)', border: '2px solid #000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>☕</span>
+          <span>Cafes & Dining</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ width: '22px', height: '22px', borderRadius: '50%', backgroundColor: 'var(--color-mint)', border: '2px solid #000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>⭐</span>
+          <span>Attractions & Culture</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ width: '22px', height: '22px', borderRadius: '50%', backgroundColor: 'var(--color-sky)', border: '2px solid #000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>🏖️</span>
+          <span>Beaches & Outdoors</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ width: '22px', height: '22px', borderRadius: '50%', backgroundColor: 'var(--color-pink)', border: '2px solid #000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>🎉</span>
+          <span>Custom Party Pins</span>
+        </div>
+      </div>
 
       {/* ─── Top Center Host Activity Button ─── */}
       <button
