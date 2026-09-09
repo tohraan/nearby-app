@@ -7,12 +7,26 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const DB_PATH = join(__dirname, 'nearby.sqlite');
 
-const db = new Database(DB_PATH);
+let dbPath = join(__dirname, 'nearby.sqlite');
+if (process.env.VERCEL) {
+  dbPath = '/tmp/nearby.sqlite';
+}
+
+let db;
+try {
+  db = new Database(dbPath);
+} catch (err) {
+  console.warn('Fallback opening SQLite at /tmp/nearby.sqlite due to:', err.message);
+  db = new Database('/tmp/nearby.sqlite');
+}
 
 // Enable WAL mode for better concurrent reads
-db.pragma('journal_mode = WAL');
+try {
+  db.pragma('journal_mode = WAL');
+} catch (e) {
+  // Ignored in serverless environments
+}
 
 // Create tables
 db.exec(`
