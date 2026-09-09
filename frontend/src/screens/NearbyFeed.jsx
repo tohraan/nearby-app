@@ -1,11 +1,11 @@
 /**
- * NearbyFeed.jsx — Main discovery screen
- * Shows places near user with category filters, search, map/list toggle,
- * live activity strip, and group cards.
+ * NearbyFeed.jsx — Discovery Screen
+ * Features 2-button view toggle (List & Map), top right Emirate/City & Distance filters,
+ * category chip bar, and an endless "Popular Near You" grid with infinite scroll.
  */
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Search, MapPin, List, Map as MapIcon, Star, Wifi, WifiOff, Bell, Check, ExternalLink } from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { Search, MapPin, List, Map as MapIcon, Star, Bell, ExternalLink } from 'lucide-react';
 import { useGeolocation } from '../hooks/useGeolocation.js';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 import { getCachedPlaces, getSavedPlaceIds, savePlaceLocally, unsavePlaceLocally, getVisitedPlaceIds } from '../lib/db.js';
@@ -19,33 +19,51 @@ import TrendingTicker from '../components/TrendingTicker.jsx';
 
 const CATEGORIES = ['all', 'food', 'cafe', 'nightlife', 'entertainment', 'outdoor', 'sports', 'culture', 'attraction', 'shopping'];
 
+const CITIES = ['all', 'Dubai', 'Abu Dhabi', 'Sharjah', 'Ras Al Khaimah', 'Ajman'];
+
+const DISTANCES = [
+  { label: 'Any Radius', val: 'all' },
+  { label: '< 2 km', val: '2' },
+  { label: '< 5 km', val: '5' },
+  { label: '< 10 km', val: '10' },
+  { label: '< 25 km', val: '25' },
+  { label: '< 50 km', val: '50' }
+];
+
 export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
-  const { lat, lng, isDefault } = useGeolocation();
+  const { lat, lng } = useGeolocation();
   const isOnline = useOnlineStatus();
 
   const [places, setPlaces] = useState([]);
   const [savedIds, setSavedIds] = useState(new Set());
   const [visitedIds, setVisitedIds] = useState(new Set());
+  
+  // Filters & State
   const [category, setCategory] = useState('all');
   const [search, setSearch] = useState('');
-  const [view, setView] = useState('split');
+  const [selectedCity, setSelectedCity] = useState('all');
+  const [selectedDistance, setSelectedDistance] = useState('all');
+  const [view, setView] = useState('list'); // 'list' vs 'map'
+  
+  // Infinite Scroll Pagination
+  const [page, setPage] = useState(1);
+  const pageSize = 12;
+  const observerTargetRef = useRef(null);
+
   const [selectedPlaceId, setSelectedPlaceId] = useState(null);
   const [groups, setGroups] = useState([]);
   const [showCreateActivity, setShowCreateActivity] = useState(false);
   const [activityForm, setActivityForm] = useState({ name: '', category: 'outdoor', activityType: '', startsAt: '', maxPeople: 0, cost: 0 });
   const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState({ interests: [], maxDistance: 20 });
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
   const [notificationStatus, setNotificationStatus] = useState(
     typeof Notification !== 'undefined' ? Notification.permission : 'default'
   );
 
-  // Load places from IndexedDB and profile from localStorage
+  // Load cached places & user saves
   useEffect(() => {
     async function load() {
       const cached = await getCachedPlaces();
-      
-      // Fallback Data Logic: If no places found (e.g. Dubai bounding box failed), use UAE Highlights
       if (cached.length === 0) {
         setPlaces(FALLBACK_PLACES);
       } else {
@@ -57,11 +75,6 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
       
       const visited = await getVisitedPlaceIds();
       setVisitedIds(new Set(visited));
-      
-      const storedProfile = localStorage.getItem('nearby_profile');
-      if (storedProfile) {
-        try { setProfile(JSON.parse(storedProfile)); } catch(e){}
-      }
       
       if (isOnline) {
         try {
@@ -77,31 +90,70 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
     load();
   }, []);
 
-  // Filter and sort places
+  // Reset infinite scroll pagination when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [category, search, selectedCity, selectedDistance]);
+
+  // Master Filter & Sort Engine
   const filteredPlaces = useMemo(() => {
     let result = sortByDistance(places, lat, lng);
-    
-    // Apply distance filter from profile
-    if (profile.maxDistance && profile.maxDistance < 20) {
-      result = result.filter(p => p.distance <= profile.maxDistance);
+
+    // Emirate / City Filter
+    if (selectedCity !== 'all') {
+      result = result.filter(p => p.city && p.city.toLowerCase() === selectedCity.toLowerCase());
     }
 
+    // Distance Radius Filter
+    if (selectedDistance !== 'all') {
+      const maxKm = parseFloat(selectedDistance);
+      result = result.filter(p => p.distance <= maxKm);
+    }
+
+    // Category Filter
     if (category !== 'all') {
       result = result.filter(p => p.category === category);
     }
 
+    // Keyword Search Query
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(p =>
         p.name.toLowerCase().includes(q) ||
         p.category.toLowerCase().includes(q) ||
+        p.city?.toLowerCase().includes(q) ||
         p.cuisine?.some(c => c.toLowerCase().includes(q)) ||
         p.tags?.some(t => t.toLowerCase().includes(q))
       );
     }
 
-    return result.slice(0, 100);
-  }, [places, lat, lng, category, search, profile.maxDistance]);
+    return result;
+  }, [places, lat, lng, selectedCity, selectedDistance, category, search]);
+
+  // Infinite Scroll Paginated Subset
+  const visiblePlaces = useMemo(() => {
+    return filteredPlaces.slice(0, page * pageSize);
+  }, [filteredPlaces, page]);
+
+  const hasMore = visiblePlaces.length < filteredPlaces.length;
+
+  // IntersectionObserver for Continuous Infinite Scroll
+  useEffect(() => {
+    const target = observerTargetRef.current;
+    if (!target || !hasMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setPage(prev => prev + 1);
+        }
+      },
+      { rootMargin: '300px' }
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [hasMore]);
 
   // Save/unsave handler
   const handleToggleSave = useCallback(async (placeId) => {
@@ -135,12 +187,6 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
       const permission = await Notification.requestPermission();
       setNotificationStatus(permission);
       setShowNotificationPrompt(false);
-      if (permission === 'granted') {
-        new Notification('Notifications Enabled!', {
-          body: 'We will notify you about nearby hidden gems.',
-          icon: '/favicon.ico'
-        });
-      }
     } catch (error) {
       console.error('Error requesting notification permission:', error);
     }
@@ -158,7 +204,7 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
         ...activityForm,
         lat,
         lng,
-        creatorDeviceId: profile.deviceId || 'unknown',
+        creatorDeviceId: 'user-local',
       };
       
       const res = await api.createGroup(newActivity);
@@ -166,30 +212,12 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
         setGroups([{ id: res.id, ...newActivity, member_count: 1 }, ...groups]);
         setShowCreateActivity(false);
         setActivityForm({ name: '', category: 'outdoor', activityType: '', startsAt: '', maxPeople: 0, cost: 0 });
-        
-        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-          new Notification('Activity Created', { body: `Your ${activityForm.category} activity is now live on the map!` });
-        }
       }
     } catch (err) {
       console.error('Failed to create activity', err);
-      alert('Failed to create activity. Please try again.');
     }
   };
 
-  const isBrowsing = category !== 'all' || search.trim().length > 0;
-  
-  const popularPlaces = useMemo(() => {
-    const preferredCats = profile.interests?.length > 0 ? profile.interests : ['food', 'attraction', 'cafe', 'culture'];
-    let popular = filteredPlaces.filter(p => preferredCats.includes(p.category));
-    
-    // If strict interest filtering yields nothing, fallback to top nearby places
-    if (popular.length === 0) {
-      popular = filteredPlaces;
-    }
-    return popular.slice(0, 6);
-  }, [filteredPlaces, profile.interests]);
-  
   const selectedLocation = useMemo(() => {
     if (!selectedPlaceId) return null;
     const place = filteredPlaces.find(p => p.id === selectedPlaceId);
@@ -199,29 +227,12 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
     return null;
   }, [selectedPlaceId, filteredPlaces, groups]);
 
-  const hiddenGems = useMemo(() => {
-    const avoidCats = ['shopping', 'mall'];
-    let gems = filteredPlaces.filter(p => !avoidCats.includes(p.category));
-    
-    // Try to match interests if they exist
-    if (profile.interests?.length > 0) {
-      const matched = gems.filter(p => profile.interests.includes(p.category));
-      if (matched.length > 0) gems = matched;
-    }
-    
-    // Pick places slightly further away (bottom half of the sorted array)
-    // If very few places, just pick the last few
-    const startIndex = Math.min(3, Math.floor(gems.length / 2));
-    return gems.slice(startIndex, startIndex + 6);
-  }, [filteredPlaces, profile.interests]);
-
   if (loading) {
     return (
       <div className="app-shell__content">
         <div className="nearby-hero">
           <div className="skeleton" style={{ width: '100px', height: '14px', marginBottom: '12px' }} />
           <div className="skeleton" style={{ width: '80%', height: '48px', marginBottom: '8px' }} />
-          <div className="skeleton" style={{ width: '60%', height: '48px' }} />
         </div>
         <div className="nearby-grid">
           {[1, 2, 3, 4, 5, 6].map(i => (
@@ -234,26 +245,55 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
 
   return (
     <div className="app-shell__content">
-      {/* ─── Big Featured Header Banner ─── */}
+      {/* ─── Top Hero Header Banner ─── */}
       <TrendingTicker onNavigateToPlace={onNavigateToPlace} onNavigateToGroup={onNavigateToGroup} />
 
-      {/* ─── Search Bar & Notification Bell Row ─── */}
+      {/* ─── Search Bar & Top Right Filters (Emirate, Radius, Bell) ─── */}
       <div className="nearby-controls" style={{ marginBottom: '20px' }}>
-        <div className="nearby-controls__row" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <div style={{ flex: 1, position: 'relative' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Search Input */}
+          <div style={{ flex: '1 1 240px', position: 'relative' }}>
             <Search size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
             <input
               className="neo-input neo-input--large"
               type="text"
-              placeholder="Coffee, rooftop bars, viewing decks..."
+              placeholder="Search cafes, rooftop bars, viewing decks..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              style={{ paddingLeft: '42px', height: '48px', fontSize: '15px' }}
+              style={{ paddingLeft: '42px', height: '46px', fontSize: '14px' }}
             />
           </div>
+
+          {/* Emirate / City Filter Dropdown */}
+          <select
+            className="neo-input"
+            value={selectedCity}
+            onChange={e => setSelectedCity(e.target.value)}
+            style={{ height: '46px', fontSize: '13px', fontWeight: 800, minWidth: '120px', cursor: 'pointer', backgroundColor: 'var(--color-cream)' }}
+          >
+            <option value="all">📍 All UAE Cities</option>
+            <option value="Dubai">🏙️ Dubai</option>
+            <option value="Abu Dhabi">🕌 Abu Dhabi</option>
+            <option value="Sharjah">🏛️ Sharjah</option>
+            <option value="Ras Al Khaimah">⛰️ Ras Al Khaimah</option>
+          </select>
+
+          {/* Distance Radius Filter Dropdown */}
+          <select
+            className="neo-input"
+            value={selectedDistance}
+            onChange={e => setSelectedDistance(e.target.value)}
+            style={{ height: '46px', fontSize: '13px', fontWeight: 800, minWidth: '120px', cursor: 'pointer', backgroundColor: 'var(--color-cream)' }}
+          >
+            {DISTANCES.map(d => (
+              <option key={d.val} value={d.val}>{d.label}</option>
+            ))}
+          </select>
+
+          {/* Notification Bell */}
           <button 
             className="neo-btn neo-btn--ghost neo-btn--icon"
-            style={{ width: '48px', height: '48px', background: 'var(--color-cream)', flexShrink: 0, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            style={{ width: '46px', height: '46px', background: 'var(--color-cream)', flexShrink: 0, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             onClick={() => {
               if (notificationStatus === 'default') {
                 setShowNotificationPrompt(true);
@@ -265,7 +305,7 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
           </button>
         </div>
 
-        {/* Category Filter Chips */}
+        {/* Category Filter Chips Bar */}
         <div className="category-chips-wrapper" style={{ marginTop: '12px' }}>
           <div className="category-chips">
             {CATEGORIES.map(cat => (
@@ -274,23 +314,26 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
                 className={`category-chip ${category === cat ? 'category-chip--active' : ''}`}
                 onClick={() => setCategory(cat)}
               >
-                {cat !== 'all' && CATEGORY_EMOJI[cat]} {cat === 'all' ? '✦ All' : CATEGORY_LABELS[cat]}
+                {cat !== 'all' && CATEGORY_EMOJI[cat]} {cat === 'all' ? '✦ All Categories' : CATEGORY_LABELS[cat]}
               </button>
             ))}
           </div>
         </div>
       </div>
 
-
-      {/* ─── Custom Offline English Map View (Visible by default in Split mode) ─── */}
-      {(view === 'split' || view === 'map') && (
+      {/* ─── Full Map View (When Map toggle selected) ─── */}
+      {view === 'map' && (
         <div 
           className="map-container" 
           style={{ 
             position: 'relative', 
             width: '100%', 
-            height: view === 'map' ? 'clamp(520px, 75vh, 750px)' : 'clamp(350px, 45vh, 480px)',
-            marginBottom: 'var(--space-5)'
+            height: 'clamp(550px, 78vh, 800px)',
+            marginBottom: 'var(--space-5)',
+            borderRadius: '16px',
+            overflow: 'hidden',
+            border: '3px solid var(--color-black)',
+            boxShadow: '6px 6px 0 var(--color-black)'
           }}
         >
           <CustomMap
@@ -304,7 +347,7 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
             visitedIds={visitedIds}
           />
           
-          {/* Floating Bottom Sheet */}
+          {/* Floating Bottom Card on Map Selection */}
           {selectedLocation && (
             <div 
               className="neo-card" 
@@ -318,12 +361,12 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '8px',
-                animation: 'slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards'
+                backgroundColor: 'var(--color-paper)'
               }}
             >
               <button 
                 onClick={() => setSelectedPlaceId(null)}
-                style={{ position: 'absolute', top: '8px', right: '8px', background: 'none', border: 'none', cursor: 'pointer' }}
+                style={{ position: 'absolute', top: '8px', right: '8px', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
               >
                 ✕
               </button>
@@ -344,283 +387,151 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
                 </div>
               </div>
               
-              {selectedLocation.isGroup ? (
-                <>
-                  <div style={{ fontSize: '14px', margin: '4px 0' }}>
-                    <strong>Activity:</strong> {selectedLocation.activity_type} <br/>
-                    <strong>Spots:</strong> {selectedLocation.member_count} / {selectedLocation.max_people || 'Unlimited'}
-                  </div>
-                  <button className="neo-btn neo-btn--primary" onClick={() => onNavigateToGroup?.(selectedLocation.id)}>
-                    View Meetup
-                  </button>
-                </>
-              ) : (
-                <>
-                  <div style={{ fontSize: '14px', margin: '4px 0', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <span>⭐ {selectedLocation.rating || 'New'}</span>
-                    <span>{selectedLocation.city}</span>
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                    <button className="neo-btn neo-btn--primary" onClick={() => onNavigateToPlace?.(selectedLocation.id)} style={{ flex: 1 }}>
-                      View Place
-                    </button>
-                    <a
-                      href={getActionableUrl(selectedLocation)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="neo-btn neo-btn--accent"
-                      style={{ flex: 1, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontSize: '12px', fontWeight: 900 }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {getActionLabel(selectedLocation)} <ExternalLink size={12} />
-                    </a>
-                  </div>
-                </>
-
-              )}
+              <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                <button className="neo-btn neo-btn--primary" onClick={() => onNavigateToPlace?.(selectedLocation.id)} style={{ flex: 1 }}>
+                  View Details
+                </button>
+                <a
+                  href={getActionableUrl(selectedLocation)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="neo-btn neo-btn--accent"
+                  style={{ flex: 1, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontSize: '12px', fontWeight: 900 }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {getActionLabel(selectedLocation)} <ExternalLink size={12} />
+                </a>
+              </div>
             </div>
           )}
         </div>
       )}
 
-      {/* ─── Places Grid / Curated View ─── */}
-      {!isBrowsing && (view === 'split' || view === 'list') && (
-        <>
-          <div style={{ marginBottom: 'var(--space-6)' }}>
-            <h3 style={{ marginBottom: 'var(--space-3)', fontSize: '18px', fontWeight: 800, letterSpacing: '-0.02em' }}>
-              Popular Near You
+      {/* ─── Endless "Popular Near You" Discovery Feed (List View) ─── */}
+      {view === 'list' && (
+        <div style={{ marginBottom: '32px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+            <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 900, letterSpacing: '-0.02em' }}>
+              Popular Near You ({filteredPlaces.length})
             </h3>
-            <div style={{ display: 'flex', gap: 'var(--space-3)', overflowX: 'auto', paddingBottom: 'var(--space-2)', scrollbarWidth: 'none', scrollSnapType: 'x mandatory', marginInline: 'calc(var(--space-4) * -1)', paddingInline: 'var(--space-4)' }}>
-              {popularPlaces.map(place => (
-                <div 
-                  key={place.id} 
-                  className="neo-card neo-card--clickable place-card" 
-                  style={{ minWidth: 'min(80vw, 260px)', flexShrink: 0, scrollSnapAlign: 'start', padding: '12px' }}
-                  onClick={() => onNavigateToPlace?.(place.id)}
-                >
-                  <div className="place-card__image" style={{ position: 'relative', overflow: 'hidden', height: '135px', borderRadius: '10px', border: '2px solid var(--color-black)', marginBottom: '8px' }}>
-                    <img 
-                      src={getPlaceImage(place)} 
-                      alt={place.name} 
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
-                      loading="lazy"
-                    />
-                    <div 
-                      style={{
-                        position: 'absolute',
-                        top: '6px',
-                        left: '6px',
-                        backgroundColor: 'var(--color-yellow)',
-                        border: '2px solid var(--color-black)',
-                        borderRadius: '6px',
-                        padding: '2px 6px',
-                        fontSize: '10px',
-                        fontWeight: 800,
-                        boxShadow: '2px 2px 0 var(--color-black)',
-                        textTransform: 'uppercase'
-                      }}
-                    >
-                      {CATEGORY_EMOJI[place.category]} {place.category}
-                    </div>
-                  </div>
-                  <div className="place-card__name" style={{ fontSize: '15px', fontWeight: 800, lineHeight: 1.2 }}>{place.name}</div>
-                  <div className="place-card__meta" style={{ marginTop: '4px', fontSize: '12px' }}>
-                    <span className="place-card__rating"><Star size={12} fill="var(--color-yellow)" stroke="var(--color-black)" /> {place.rating}</span>
-                    <span style={{ color: 'var(--text-muted)' }}>•</span>
-                    <span className="place-card__distance"><MapPin size={12} /> {formatDistance(place.distance)}</span>
-                  </div>
-                  <div className="place-card__actions" style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
-                    <a
-                      href={getActionableUrl(place)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="neo-btn neo-btn--xs neo-btn--accent"
-                      style={{ textDecoration: 'none', fontWeight: 800, padding: '2px 8px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {getActionLabel(place)} <ExternalLink size={10} />
-                    </a>
-                    <button
-                      className={`place-card__save-btn ${savedIds.has(place.id) ? 'place-card__save-btn--saved' : ''}`}
-                      onClick={(e) => { e.stopPropagation(); handleToggleSave(place.id); }}
-                    >
-                      {savedIds.has(place.id) ? '❤️' : '🤍'}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <span style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-muted)' }}>
+              Showing {visiblePlaces.length} of {filteredPlaces.length} places
+            </span>
           </div>
-          
-          <div style={{ marginBottom: 'var(--space-6)' }}>
-            <h3 style={{ marginBottom: 'var(--space-3)', fontSize: '18px', fontWeight: 800, letterSpacing: '-0.02em' }}>
-              Hidden Gems
-            </h3>
-            <div style={{ display: 'flex', gap: 'var(--space-3)', overflowX: 'auto', paddingBottom: 'var(--space-2)', scrollbarWidth: 'none', scrollSnapType: 'x mandatory', marginInline: 'calc(var(--space-4) * -1)', paddingInline: 'var(--space-4)' }}>
-              {hiddenGems.map(place => (
-                <div 
-                  key={place.id} 
-                  className="neo-card neo-card--clickable place-card" 
-                  style={{ minWidth: 'min(80vw, 260px)', flexShrink: 0, scrollSnapAlign: 'start', padding: '12px' }}
-                  onClick={() => onNavigateToPlace?.(place.id)}
-                >
-                  <div className="place-card__image" style={{ position: 'relative', overflow: 'hidden', height: '135px', borderRadius: '10px', border: '2px solid var(--color-black)', marginBottom: '8px' }}>
-                    <img 
-                      src={getPlaceImage(place)} 
-                      alt={place.name} 
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
-                      loading="lazy"
-                    />
-                    <div 
-                      style={{
-                        position: 'absolute',
-                        top: '6px',
-                        left: '6px',
-                        backgroundColor: 'var(--color-yellow)',
-                        border: '2px solid var(--color-black)',
-                        borderRadius: '6px',
-                        padding: '2px 6px',
-                        fontSize: '10px',
-                        fontWeight: 800,
-                        boxShadow: '2px 2px 0 var(--color-black)',
-                        textTransform: 'uppercase'
-                      }}
-                    >
-                      {CATEGORY_EMOJI[place.category]} {place.category}
-                    </div>
-                  </div>
-                  <div className="place-card__name" style={{ fontSize: '15px', fontWeight: 800, lineHeight: 1.2 }}>{place.name}</div>
-                  <div className="place-card__meta" style={{ marginTop: '4px', fontSize: '12px' }}>
-                    <span className="place-card__rating"><Star size={12} fill="var(--color-yellow)" stroke="var(--color-black)" /> {place.rating}</span>
-                    <span style={{ color: 'var(--text-muted)' }}>•</span>
-                    <span className="place-card__distance"><MapPin size={12} /> {formatDistance(place.distance)}</span>
-                  </div>
-                  <div className="place-card__actions" style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
-                    <a
-                      href={getActionableUrl(place)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="neo-btn neo-btn--xs neo-btn--accent"
-                      style={{ textDecoration: 'none', fontWeight: 800, padding: '2px 8px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {getActionLabel(place)} <ExternalLink size={10} />
-                    </a>
-                    <button
-                      className={`place-card__save-btn ${savedIds.has(place.id) ? 'place-card__save-btn--saved' : ''}`}
-                      onClick={(e) => { e.stopPropagation(); handleToggleSave(place.id); }}
-                    >
-                      {savedIds.has(place.id) ? '❤️' : '🤍'}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
 
-      {/* ─── Search Results Grid ─── */}
-      {isBrowsing && (view === 'split' || view === 'list') && (
-        filteredPlaces.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state__icon">🔍</div>
-            <div className="empty-state__title">NOTHING HERE YET</div>
-            <div className="empty-state__desc">
-              {search ? 'No places match your search. Try different keywords.' : 'No places found in this category nearby.'}
+          {visiblePlaces.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-state__icon">🔍</div>
+              <div className="empty-state__title">NO PLACES MATCH YOUR FILTERS</div>
+              <div className="empty-state__desc">Try adjusting your city, radius, or category filters above!</div>
             </div>
-          </div>
-        ) : (
-          <div className="nearby-grid">
-            {filteredPlaces.map(place => (
-              <div 
-                key={place.id} 
-                className="neo-card neo-card--clickable place-card"
-                style={{ padding: '12px' }}
-                onClick={() => onNavigateToPlace?.(place.id)}
+          ) : (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+                gap: '16px'
+              }}
+            >
+              {visiblePlaces.map(place => (
+                <div 
+                  key={place.id} 
+                  className="neo-card neo-card--clickable place-card" 
+                  style={{ padding: '12px', display: 'flex', flexDirection: 'column' }}
+                  onClick={() => onNavigateToPlace?.(place.id)}
+                >
+                  <div className="place-card__image" style={{ position: 'relative', overflow: 'hidden', height: '145px', borderRadius: '10px', border: '2px solid var(--color-black)', marginBottom: '8px' }}>
+                    <img 
+                      src={getPlaceImage(place)} 
+                      alt={place.name}
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800&auto=format&fit=crop&q=80';
+                      }}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
+                      loading="lazy"
+                    />
+                    <div 
+                      style={{
+                        position: 'absolute',
+                        top: '6px',
+                        left: '6px',
+                        backgroundColor: 'var(--color-yellow)',
+                        border: '2px solid var(--color-black)',
+                        borderRadius: '6px',
+                        padding: '2px 6px',
+                        fontSize: '10px',
+                        fontWeight: 900,
+                        boxShadow: '2px 2px 0 var(--color-black)',
+                        textTransform: 'uppercase'
+                      }}
+                    >
+                      {CATEGORY_EMOJI[place.category]} {place.category}
+                    </div>
+                  </div>
+
+                  <div className="place-card__name" style={{ fontSize: '15px', fontWeight: 800, lineHeight: 1.2 }}>{place.name}</div>
+                  
+                  <div className="place-card__meta" style={{ marginTop: '4px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span className="place-card__rating"><Star size={12} fill="var(--color-yellow)" stroke="var(--color-black)" /> {place.rating}</span>
+                    <span style={{ color: 'var(--text-muted)' }}>•</span>
+                    <span className="place-card__distance"><MapPin size={12} /> {formatDistance(place.distance)}</span>
+                    {place.city && <><span style={{ color: 'var(--text-muted)' }}>•</span><span>{place.city}</span></>}
+                  </div>
+
+                  <div className="place-card__actions" style={{ marginTop: 'auto', paddingTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                    <a
+                      href={getActionableUrl(place)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="neo-btn neo-btn--xs neo-btn--accent"
+                      style={{ textDecoration: 'none', fontWeight: 900, padding: '4px 8px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {getActionLabel(place)} <ExternalLink size={10} />
+                    </a>
+                    <button
+                      className={`place-card__save-btn ${savedIds.has(place.id) ? 'place-card__save-btn--saved' : ''}`}
+                      onClick={(e) => { e.stopPropagation(); handleToggleSave(place.id); }}
+                    >
+                      {savedIds.has(place.id) ? '❤️' : '🤍'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Infinite Scroll Load Trigger */}
+          {hasMore && (
+            <div ref={observerTargetRef} style={{ textAlign: 'center', marginTop: '24px', paddingBottom: '16px' }}>
+              <button
+                className="neo-btn neo-btn--secondary"
+                onClick={() => setPage(prev => prev + 1)}
+                style={{ fontWeight: 900, padding: '10px 24px' }}
               >
-                <div className="place-card__image" style={{ position: 'relative', overflow: 'hidden', height: '140px', borderRadius: '10px', border: '2px solid var(--color-black)', marginBottom: '8px' }}>
-                  <img 
-                    src={getPlaceImage(place)} 
-                    alt={place.name} 
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
-                    loading="lazy"
-                  />
-                  <div 
-                    style={{
-                      position: 'absolute',
-                      top: '6px',
-                      left: '6px',
-                      backgroundColor: 'var(--color-yellow)',
-                      border: '2px solid var(--color-black)',
-                      borderRadius: '6px',
-                      padding: '2px 6px',
-                      fontSize: '10px',
-                      fontWeight: 800,
-                      boxShadow: '2px 2px 0 var(--color-black)',
-                      textTransform: 'uppercase'
-                    }}
-                  >
-                    {CATEGORY_EMOJI[place.category]} {place.category}
-                  </div>
-                </div>
-                <div className="place-card__name" style={{ fontSize: '15px', fontWeight: 800, lineHeight: 1.2 }}>{place.name}</div>
-                <div className="place-card__meta" style={{ marginTop: '4px', fontSize: '12px' }}>
-                  <span className="place-card__rating">
-                    <Star size={13} fill="var(--color-yellow)" stroke="var(--color-black)" /> {place.rating}
-                  </span>
-                  <span style={{ color: 'var(--text-muted)' }}>•</span>
-                  <span className="place-card__distance">
-                    <MapPin size={12} /> {formatDistance(place.distance)}
-                  </span>
-                </div>
-                <div className="place-card__actions" style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', paddingTop: '8px' }}>
-                  <a
-                    href={getActionableUrl(place)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="neo-btn neo-btn--xs neo-btn--accent"
-                    style={{ textDecoration: 'none', fontWeight: 800, padding: '2px 8px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {getActionLabel(place)} <ExternalLink size={10} />
-                  </a>
-                  <button
-                    className={`place-card__save-btn ${savedIds.has(place.id) ? 'place-card__save-btn--saved' : ''}`}
-                    onClick={(e) => { e.stopPropagation(); handleToggleSave(place.id); }}
-                    aria-label={savedIds.has(place.id) ? 'Unsave place' : 'Save place'}
-                  >
-                    {savedIds.has(place.id) ? '❤️' : '🤍'}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )
+                LOAD MORE PLACES (+12)
+              </button>
+            </div>
+          )}
+        </div>
       )}
 
-      {/* ─── Floating View Toggle ─── */}
+      {/* ─── Reverted 2-Button View Toggle (List vs Map) ─── */}
       <div className="view-toggle">
         <button
-          className={`view-toggle__btn ${view === 'split' ? 'view-toggle__btn--active' : ''}`}
-          onClick={() => setView('split')}
-          aria-label="Split view"
+          className={`view-toggle__btn ${view === 'list' ? 'view-toggle__btn--active' : ''}`}
+          onClick={() => setView('list')}
+          aria-label="List view"
         >
-          <MapIcon size={14} /> MAP + FEED
+          <List size={16} /> LIST VIEW
         </button>
         <button
           className={`view-toggle__btn ${view === 'map' ? 'view-toggle__btn--active' : ''}`}
           onClick={() => setView('map')}
           aria-label="Map view"
         >
-          <MapPin size={14} /> MAP ONLY
-        </button>
-        <button
-          className={`view-toggle__btn ${view === 'list' ? 'view-toggle__btn--active' : ''}`}
-          onClick={() => setView('list')}
-          aria-label="List view"
-        >
-          <List size={14} /> LIST ONLY
+          <MapIcon size={16} /> MAP VIEW
         </button>
       </div>
 
@@ -635,7 +546,7 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
             <div style={{ fontSize: '48px', marginBottom: 'var(--space-3)' }}>🔔</div>
             <h2 style={{ fontSize: '24px', marginBottom: 'var(--space-2)' }}>Never miss out</h2>
             <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-6)', lineHeight: 1.4 }}>
-              Enable notifications to get alerts when you're near a hidden gem or a popular hangout spot!
+              Enable notifications to get alerts when you're near a hidden gem or a popular spot!
             </p>
             <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
               <button className="neo-btn neo-btn--ghost" style={{ flex: 1 }} onClick={() => setShowNotificationPrompt(false)}>Later</button>
@@ -644,6 +555,7 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
           </div>
         </div>
       )}
+
       {/* ─── Create Activity Modal ─── */}
       {showCreateActivity && (
         <div style={{
@@ -692,7 +604,6 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
           </div>
         </div>
       )}
-
     </div>
   );
 }
