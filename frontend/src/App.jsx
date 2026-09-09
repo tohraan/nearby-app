@@ -71,37 +71,39 @@ export default function App() {
 
       {!activeGroupId && !activePlaceId && (
         <nav className="bottom-nav">
-          <button 
-            className={`bottom-nav__item ${currentTab === 'nearby' ? 'bottom-nav__item--active' : ''}`}
-            onClick={() => setCurrentTab('nearby')}
-          >
-            <Map size={24} strokeWidth={2.5} />
-            Nearby
-          </button>
-          
-          <button 
-            className={`bottom-nav__item ${currentTab === 'saved' ? 'bottom-nav__item--active' : ''}`}
-            onClick={() => setCurrentTab('saved')}
-          >
-            <Heart size={24} strokeWidth={2.5} />
-            Saved
-          </button>
-          
-          <button 
-            className={`bottom-nav__item ${currentTab === 'chat' ? 'bottom-nav__item--active' : ''}`}
-            onClick={() => setCurrentTab('chat')}
-          >
-            <MessageSquare size={24} strokeWidth={2.5} />
-            AI Guide
-          </button>
-          
-          <button 
-            className={`bottom-nav__item ${currentTab === 'profile' ? 'bottom-nav__item--active' : ''}`}
-            onClick={() => setCurrentTab('profile')}
-          >
-            <User size={24} strokeWidth={2.5} />
-            Profile
-          </button>
+          <div className="bottom-nav__inner">
+            <button 
+              className={`bottom-nav__item ${currentTab === 'nearby' ? 'bottom-nav__item--active' : ''}`}
+              onClick={() => setCurrentTab('nearby')}
+            >
+              <Map size={22} strokeWidth={2.5} />
+              <span>Nearby</span>
+            </button>
+            
+            <button 
+              className={`bottom-nav__item ${currentTab === 'saved' ? 'bottom-nav__item--active' : ''}`}
+              onClick={() => setCurrentTab('saved')}
+            >
+              <Heart size={22} strokeWidth={2.5} />
+              <span>Saved</span>
+            </button>
+            
+            <button 
+              className={`bottom-nav__item ${currentTab === 'chat' ? 'bottom-nav__item--active' : ''}`}
+              onClick={() => setCurrentTab('chat')}
+            >
+              <MessageSquare size={22} strokeWidth={2.5} />
+              <span>AI Guide</span>
+            </button>
+            
+            <button 
+              className={`bottom-nav__item ${currentTab === 'profile' ? 'bottom-nav__item--active' : ''}`}
+              onClick={() => setCurrentTab('profile')}
+            >
+              <User size={22} strokeWidth={2.5} />
+              <span>Profile</span>
+            </button>
+          </div>
         </nav>
       )}
     </div>

@@ -23,19 +23,28 @@ export default function CustomMap({
   const containerRef = useRef(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
 
-  // Handle window resizing for full responsiveness
+  // Handle container resizing for full responsiveness
   useEffect(() => {
     const updateSize = () => {
       if (containerRef.current) {
-        setDimensions({
-          width: containerRef.current.clientWidth,
-          height: containerRef.current.clientHeight,
-        });
+        const w = containerRef.current.clientWidth || 800;
+        const h = containerRef.current.clientHeight || 500;
+        setDimensions({ width: w, height: h });
       }
     };
     updateSize();
+
+    let observer;
+    if (typeof ResizeObserver !== 'undefined' && containerRef.current) {
+      observer = new ResizeObserver(updateSize);
+      observer.observe(containerRef.current);
+    }
+
     window.addEventListener('resize', updateSize);
-    return () => window.removeEventListener('resize', updateSize);
+    return () => {
+      window.removeEventListener('resize', updateSize);
+      if (observer) observer.disconnect();
+    };
   }, []);
 
   // Update center when user location is obtained

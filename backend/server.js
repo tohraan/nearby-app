@@ -149,8 +149,10 @@ function validateTextInput(field, maxLength = 5000) {
   };
 }
 
-// ─── Health endpoint ────────────────────────────────────
-app.get('/health', (_req, res) => {
+// ─── Express Router for API routes ──────────────────────
+const apiRouter = express.Router();
+
+apiRouter.get('/health', (_req, res) => {
   const aiStatus = getHealthStatus();
   res.json({
     status: 'ok',
@@ -160,11 +162,9 @@ app.get('/health', (_req, res) => {
   });
 });
 
-// ─── Places endpoint (serves bundled data) ──────────────
-app.get('/places', (_req, res) => {
+apiRouter.get('/places', (_req, res) => {
   try {
     const places = getAllPlaces();
-    // Set long cache header — this data is static
     res.set('Cache-Control', 'public, max-age=86400');
     res.json(places);
   } catch (err) {
@@ -172,33 +172,32 @@ app.get('/places', (_req, res) => {
   }
 });
 
-// ─── Mount route groups with rate limits ────────────────
-app.use('/saves',
+apiRouter.use('/saves',
   validateDeviceId,
   validatePlaceId,
   rateLimit({ windowMs: 60000, maxRequests: 60, message: 'Too many save operations' }),
   savesRouter
 );
 
-app.use('/nearby-activity',
+apiRouter.use('/nearby-activity',
   validateLatLng,
   rateLimit({ windowMs: 60000, maxRequests: 30, message: 'Too many activity requests' }),
   activityRouter
 );
 
-app.use('/activity',
+apiRouter.use('/activity',
   validateDeviceId,
   rateLimit({ windowMs: 60000, maxRequests: 20, message: 'Too many activity posts' }),
   activityRouter
 );
 
-app.use('/groups',
+apiRouter.use('/groups',
   validateDeviceId,
   rateLimit({ windowMs: 60000, maxRequests: 30, message: 'Too many group requests' }),
   groupsRouter
 );
 
-app.use('/profile',
+apiRouter.use('/profile',
   validateDeviceId,
   validateTextInput('displayName', 100),
   validateTextInput('area', 200),
@@ -206,21 +205,23 @@ app.use('/profile',
   profileRouter
 );
 
-app.use('/chat',
+apiRouter.use('/chat',
   validateDeviceId,
   validateLatLng,
   validateTextInput('message', 2000),
-  rateLimit({ windowMs: 60000, maxRequests: 10, message: 'Too many chat messages — please wait a moment' }),
+  rateLimit({ windowMs: 60000, maxRequests: 20, message: 'Too many chat messages' }),
   chatRouter
 );
 
-// ─── Root endpoint ────────────────────────────────────────
-app.get('/', (_req, res) => {
+apiRouter.get('/', (_req, res) => {
   res.json({
     message: 'Welcome to the NearbyApp Backend API',
     docs: 'Available endpoints: /health, /places, /saves, /nearby-activity, /activity, /groups, /profile, /chat'
   });
 });
+
+app.use('/api', apiRouter);
+app.use('/', apiRouter);
 
 // ─── 404 handler ────────────────────────────────────────
 app.use((_req, res) => {

@@ -9,7 +9,7 @@ import { Search, MapPin, List, Map as MapIcon, Star, Wifi, WifiOff, Bell, Check 
 import { useGeolocation } from '../hooks/useGeolocation.js';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 import { getCachedPlaces, getSavedPlaceIds, savePlaceLocally, unsavePlaceLocally, getVisitedPlaceIds } from '../lib/db.js';
-import { sortByDistance, formatDistance, CATEGORY_EMOJI, CATEGORY_LABELS } from '../lib/geo.js';
+import { sortByDistance, formatDistance, CATEGORY_EMOJI, CATEGORY_LABELS, getPlaceImage } from '../lib/geo.js';
 import { FALLBACK_PLACES } from '../lib/fallbackData.js';
 import { queueAction } from '../lib/offlineSync.js';
 import api from '../lib/api.js';
@@ -386,19 +386,42 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
                 <div 
                   key={place.id} 
                   className="neo-card neo-card--clickable place-card" 
-                  style={{ minWidth: 'min(85vw, 280px)', flexShrink: 0, scrollSnapAlign: 'start' }}
+                  style={{ minWidth: 'min(80vw, 260px)', flexShrink: 0, scrollSnapAlign: 'start', padding: '12px' }}
                   onClick={() => onNavigateToPlace?.(place.id)}
                 >
-                  <div className="place-card__image">{CATEGORY_EMOJI[place.category] || '📍'}</div>
-                  <div className="place-card__category">{CATEGORY_EMOJI[place.category]} {place.category}</div>
-                  <div className="place-card__name" style={{ fontSize: '16px' }}>{place.name}</div>
-                  <div className="place-card__meta">
+                  <div className="place-card__image" style={{ position: 'relative', overflow: 'hidden', height: '135px', borderRadius: '10px', border: '2px solid var(--color-black)', marginBottom: '8px' }}>
+                    <img 
+                      src={getPlaceImage(place)} 
+                      alt={place.name} 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
+                      loading="lazy"
+                    />
+                    <div 
+                      style={{
+                        position: 'absolute',
+                        top: '6px',
+                        left: '6px',
+                        backgroundColor: 'var(--color-yellow)',
+                        border: '2px solid var(--color-black)',
+                        borderRadius: '6px',
+                        padding: '2px 6px',
+                        fontSize: '10px',
+                        fontWeight: 800,
+                        boxShadow: '2px 2px 0 var(--color-black)',
+                        textTransform: 'uppercase'
+                      }}
+                    >
+                      {CATEGORY_EMOJI[place.category]} {place.category}
+                    </div>
+                  </div>
+                  <div className="place-card__name" style={{ fontSize: '15px', fontWeight: 800, lineHeight: 1.2 }}>{place.name}</div>
+                  <div className="place-card__meta" style={{ marginTop: '4px', fontSize: '12px' }}>
                     <span className="place-card__rating"><Star size={12} fill="var(--color-yellow)" stroke="var(--color-black)" /> {place.rating}</span>
                     <span style={{ color: 'var(--text-muted)' }}>•</span>
                     <span className="place-card__distance"><MapPin size={12} /> {formatDistance(place.distance)}</span>
                   </div>
-                  <div className="place-card__actions" style={{ marginTop: 'auto' }}>
-                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{place.city}</span>
+                  <div className="place-card__actions" style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{place.city}</span>
                     <button
                       className={`place-card__save-btn ${savedIds.has(place.id) ? 'place-card__save-btn--saved' : ''}`}
                       onClick={(e) => { e.stopPropagation(); handleToggleSave(place.id); }}
@@ -420,19 +443,42 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
                 <div 
                   key={place.id} 
                   className="neo-card neo-card--clickable place-card" 
-                  style={{ minWidth: 'min(85vw, 280px)', flexShrink: 0, scrollSnapAlign: 'start' }}
+                  style={{ minWidth: 'min(80vw, 260px)', flexShrink: 0, scrollSnapAlign: 'start', padding: '12px' }}
                   onClick={() => onNavigateToPlace?.(place.id)}
                 >
-                  <div className="place-card__image">{CATEGORY_EMOJI[place.category] || '📍'}</div>
-                  <div className="place-card__category">{CATEGORY_EMOJI[place.category]} {place.category}</div>
-                  <div className="place-card__name" style={{ fontSize: '16px' }}>{place.name}</div>
-                  <div className="place-card__meta">
+                  <div className="place-card__image" style={{ position: 'relative', overflow: 'hidden', height: '135px', borderRadius: '10px', border: '2px solid var(--color-black)', marginBottom: '8px' }}>
+                    <img 
+                      src={getPlaceImage(place)} 
+                      alt={place.name} 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
+                      loading="lazy"
+                    />
+                    <div 
+                      style={{
+                        position: 'absolute',
+                        top: '6px',
+                        left: '6px',
+                        backgroundColor: 'var(--color-yellow)',
+                        border: '2px solid var(--color-black)',
+                        borderRadius: '6px',
+                        padding: '2px 6px',
+                        fontSize: '10px',
+                        fontWeight: 800,
+                        boxShadow: '2px 2px 0 var(--color-black)',
+                        textTransform: 'uppercase'
+                      }}
+                    >
+                      {CATEGORY_EMOJI[place.category]} {place.category}
+                    </div>
+                  </div>
+                  <div className="place-card__name" style={{ fontSize: '15px', fontWeight: 800, lineHeight: 1.2 }}>{place.name}</div>
+                  <div className="place-card__meta" style={{ marginTop: '4px', fontSize: '12px' }}>
                     <span className="place-card__rating"><Star size={12} fill="var(--color-yellow)" stroke="var(--color-black)" /> {place.rating}</span>
                     <span style={{ color: 'var(--text-muted)' }}>•</span>
                     <span className="place-card__distance"><MapPin size={12} /> {formatDistance(place.distance)}</span>
                   </div>
-                  <div className="place-card__actions" style={{ marginTop: 'auto' }}>
-                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{place.city}</span>
+                  <div className="place-card__actions" style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{place.city}</span>
                     <button
                       className={`place-card__save-btn ${savedIds.has(place.id) ? 'place-card__save-btn--saved' : ''}`}
                       onClick={(e) => { e.stopPropagation(); handleToggleSave(place.id); }}
@@ -463,16 +509,38 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
               <div 
                 key={place.id} 
                 className="neo-card neo-card--clickable place-card"
+                style={{ padding: '12px' }}
                 onClick={() => onNavigateToPlace?.(place.id)}
               >
-                <div className="place-card__image">{CATEGORY_EMOJI[place.category] || '📍'}</div>
-                <div className="place-card__category">
-                  {CATEGORY_EMOJI[place.category]} {place.category}
+                <div className="place-card__image" style={{ position: 'relative', overflow: 'hidden', height: '140px', borderRadius: '10px', border: '2px solid var(--color-black)', marginBottom: '8px' }}>
+                  <img 
+                    src={getPlaceImage(place)} 
+                    alt={place.name} 
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
+                    loading="lazy"
+                  />
+                  <div 
+                    style={{
+                      position: 'absolute',
+                      top: '6px',
+                      left: '6px',
+                      backgroundColor: 'var(--color-yellow)',
+                      border: '2px solid var(--color-black)',
+                      borderRadius: '6px',
+                      padding: '2px 6px',
+                      fontSize: '10px',
+                      fontWeight: 800,
+                      boxShadow: '2px 2px 0 var(--color-black)',
+                      textTransform: 'uppercase'
+                    }}
+                  >
+                    {CATEGORY_EMOJI[place.category]} {place.category}
+                  </div>
                 </div>
-                <div className="place-card__name">{place.name}</div>
-                <div className="place-card__meta">
+                <div className="place-card__name" style={{ fontSize: '15px', fontWeight: 800, lineHeight: 1.2 }}>{place.name}</div>
+                <div className="place-card__meta" style={{ marginTop: '4px', fontSize: '12px' }}>
                   <span className="place-card__rating">
-                    <Star size={14} fill="var(--color-yellow)" stroke="var(--color-black)" /> {place.rating}
+                    <Star size={13} fill="var(--color-yellow)" stroke="var(--color-black)" /> {place.rating}
                   </span>
                   <span style={{ color: 'var(--text-muted)' }}>•</span>
                   <span className="place-card__distance">

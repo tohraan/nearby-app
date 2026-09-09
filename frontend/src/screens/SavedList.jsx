@@ -8,7 +8,7 @@ import { getSavedPlaceIds, unsavePlaceLocally, getCachedPlaceById } from '../lib
 import { api } from '../lib/api.js';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 import { queueAction } from '../lib/offlineSync.js';
-import { CATEGORY_EMOJI } from '../lib/geo.js';
+import { CATEGORY_EMOJI, getPlaceImage } from '../lib/geo.js';
 
 export default function SavedList({ onNavigateToPlace }) {
   const [savedPlaces, setSavedPlaces] = useState([]);
@@ -104,14 +104,18 @@ export default function SavedList({ onNavigateToPlace }) {
               onClick={() => onNavigateToPlace?.(place.id)}
             >
               <div style={{
-                width: '64px', height: '64px', flexShrink: 0,
+                width: '72px', height: '72px', flexShrink: 0,
                 background: 'var(--color-cream)',
                 border: '2px solid var(--color-black)',
                 borderRadius: 'var(--radius-md)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '28px'
+                overflow: 'hidden',
+                position: 'relative'
               }}>
-                {CATEGORY_EMOJI[place.category] || '📍'}
+                <img 
+                  src={getPlaceImage(place)} 
+                  alt={place.name} 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
+                />
               </div>
 
               <div style={{ flex: 1, minWidth: 0 }}>

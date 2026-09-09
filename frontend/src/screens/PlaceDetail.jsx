@@ -3,7 +3,7 @@ import { MapPin, ChevronLeft, Star, Heart, CheckCircle2 } from 'lucide-react';
 import { getCachedPlaceById, getSavedPlaceIds, savePlaceLocally, unsavePlaceLocally, getVisitedPlaceIds, addVisitedPlaceLocally, removeVisitedPlaceLocally } from '../lib/db.js';
 import { api } from '../lib/api.js';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
-import { CATEGORY_EMOJI, formatDistance, haversineKm } from '../lib/geo.js';
+import { CATEGORY_EMOJI, formatDistance, haversineKm, getPlaceImage } from '../lib/geo.js';
 import { useGeolocation } from '../hooks/useGeolocation.js';
 import { queueAction } from '../lib/offlineSync.js';
 import { FALLBACK_PLACES } from '../lib/fallbackData.js';
@@ -110,20 +110,37 @@ export default function PlaceDetail({ placeId, onBack }) {
         </button>
       </div>
 
-      {/* ─── Hero / Image Placeholder ─── */}
+      {/* ─── Hero / Image ─── */}
       <div style={{
         height: '220px',
         background: 'var(--color-cream)',
         border: '3px solid var(--color-black)',
         borderRadius: 'var(--radius-lg)',
-        boxShadow: 'var(--shadow-solid)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: '64px',
+        boxShadow: '4px 4px 0 var(--color-black)',
+        position: 'relative',
+        overflow: 'hidden',
         marginBottom: 'var(--space-5)'
       }}>
-        {CATEGORY_EMOJI[place.category] || '📍'}
+        <img 
+          src={getPlaceImage(place)} 
+          alt={place.name} 
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
+        />
+        <div style={{
+          position: 'absolute',
+          bottom: '12px',
+          left: '12px',
+          backgroundColor: 'var(--color-yellow)',
+          border: '2px solid var(--color-black)',
+          borderRadius: '6px',
+          padding: '4px 10px',
+          fontSize: '12px',
+          fontWeight: 800,
+          boxShadow: '2px 2px 0 var(--color-black)',
+          textTransform: 'uppercase'
+        }}>
+          {CATEGORY_EMOJI[place.category]} {place.category}
+        </div>
       </div>
 
       {/* ─── Info ─── */}

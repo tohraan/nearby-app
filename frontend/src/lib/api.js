@@ -12,7 +12,7 @@
 
 import { getDeviceId } from './deviceId.js';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:3001');
 const DEFAULT_TIMEOUT_MS = 10000;
 const CHAT_TIMEOUT_MS = 20000;
 const MAX_RETRIES = 3;
