@@ -5,7 +5,7 @@
  * group meetup pins, user location ("Locate Me"), zoom controls, and custom popups.
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import L from 'leaflet';
 import { Navigation, Plus, Minus, Compass, Sparkles } from 'lucide-react';
 import { CATEGORY_EMOJI, formatDistance } from '../lib/geo.js';
