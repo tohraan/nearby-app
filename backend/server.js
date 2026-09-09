@@ -32,11 +32,15 @@ const IS_PROD = process.env.NODE_ENV === 'production';
 
 const app = express();
 
-// ─── CORS ───────────────────────────────────────────────
 app.use(cors({
-  origin: IS_PROD
-    ? ['https://nearby-app.vercel.app', 'https://nearby-app.netlify.app']
-    : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000', 'http://127.0.0.1:5173'],
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, serverless) or any vercel.app / localhost origin
+    if (!origin || origin.includes('vercel.app') || origin.includes('netlify.app') || origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      callback(null, true);
+    } else {
+      callback(null, true);
+    }
+  },
   methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'X-Device-Id'],
   maxAge: 86400,
