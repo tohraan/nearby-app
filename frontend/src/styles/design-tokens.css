@@ -1,0 +1,128 @@
+/* ═══════════════════════════════════════════════════════════
+   DESIGN TOKENS — Neo-Brutalist Design System
+   Source of truth: docs/DESIGN.md
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  /* ─── Core Colors ─── */
+  --color-black: #111111;
+  --color-ink: #171717;
+  --color-white: #FFFFFF;
+  --color-paper: #FFFDF7;
+  --color-cream: #F6F0E5;
+
+  /* ─── Neo-Brutalist Accents ─── */
+  --color-yellow: #F7E84F;
+  --color-yellow-bright: #FFF23B;
+  --color-pink: #F5B7D2;
+  --color-pink-bright: #FF8FC4;
+  --color-lavender: #CFC7F4;
+  --color-purple: #8E7CFF;
+  --color-mint: #AEE8C5;
+  --color-mint-strong: #65D69A;
+  --color-coral: #FF8D72;
+  --color-orange: #FFB15C;
+  --color-blue: #9BB9FF;
+  --color-sky: #B9E7F4;
+  --color-red: #FF5C5C;
+
+  /* ─── Neutral UI ─── */
+  --color-gray-50: #FAFAF8;
+  --color-gray-100: #F2F2EF;
+  --color-gray-200: #E3E3DE;
+  --color-gray-300: #C8C8C2;
+  --color-gray-400: #96968F;
+  --color-gray-500: #6D6D66;
+  --color-gray-600: #4D4D47;
+  --color-gray-700: #353532;
+  --color-gray-800: #222222;
+
+  /* ─── Semantic Aliases ─── */
+  --bg-page: var(--color-paper);
+  --bg-surface: var(--color-white);
+  --bg-surface-muted: var(--color-cream);
+  --text-primary: var(--color-black);
+  --text-secondary: var(--color-gray-600);
+  --text-muted: var(--color-gray-500);
+  --text-inverse: var(--color-white);
+  --border-default: var(--color-black);
+  --border-muted: var(--color-gray-300);
+  --action-primary: var(--color-yellow);
+  --action-secondary: var(--color-pink);
+  --state-success: var(--color-mint-strong);
+  --state-warning: var(--color-orange);
+  --state-error: var(--color-red);
+  --state-info: var(--color-blue);
+
+  /* ─── Typography ─── */
+  --font-sans: 'Geist', 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: 'Geist Mono', 'JetBrains Mono', ui-monospace, monospace;
+  --font-display: 800;
+  --font-heading: 750;
+  --font-semibold: 650;
+  --font-medium: 550;
+  --font-regular: 400;
+
+  /* ─── Borders ─── */
+  --border-width: 2px;
+  --border-width-heavy: 3px;
+
+  /* ─── Corner Radius ─── */
+  --radius-none: 0px;
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-pill: 999px;
+
+  /* ─── Shadows (hard, offset, no blur) ─── */
+  --shadow-xs: 2px 2px 0 #111111;
+  --shadow-sm: 3px 3px 0 #111111;
+  --shadow-md: 5px 5px 0 #111111;
+  --shadow-lg: 8px 8px 0 #111111;
+  --shadow-xl: 12px 12px 0 #111111;
+
+  /* ─── Spacing (4px base grid) ─── */
+  --space-0: 0px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-14: 56px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+  --space-32: 128px;
+
+  /* ─── Motion ─── */
+  --duration-fast: 100ms;
+  --duration-standard: 160ms;
+  --duration-slow: 240ms;
+  --duration-emphasis: 360ms;
+  --ease-standard: cubic-bezier(.2, .8, .2, 1);
+  --ease-snappy: cubic-bezier(.7, 0, .3, 1);
+
+  /* ─── Layout ─── */
+  --container-max: 1440px;
+
+  /* ─── Z-Index ─── */
+  --z-base: 0;
+  --z-card: 10;
+  --z-sticker: 20;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-modal-overlay: 400;
+  --z-modal: 500;
+  --z-toast: 600;
+  --z-tooltip: 700;
+
+  /* ─── Breakpoints (reference only, use in media queries) ─── */
+  /* sm: 640px, md: 768px, lg: 1024px, xl: 1280px, 2xl: 1536px */
+}

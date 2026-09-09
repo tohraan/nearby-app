@@ -1,0 +1,10 @@
+{
+  "name": "nearby-data",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "fetch": "node fetch-overpass.js",
+    "normalize": "node normalize.js",
+    "build-data": "node fetch-overpass.js && node normalize.js"
+  }
+}

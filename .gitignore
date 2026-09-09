@@ -1,7 +1,11 @@
 node_modules/
 dist/
 .env
+.env.*
 *.sqlite
 *.sqlite3
+*.sqlite-shm
+*.sqlite-wal
+*.db
 .DS_Store
 .vite/
