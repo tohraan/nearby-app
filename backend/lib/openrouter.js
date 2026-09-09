@@ -35,7 +35,7 @@ function getSmartLocalResponse(userMessage, systemPrompt) {
   
   // Parse places from prompt
   const placeLines = (systemPrompt || '').split('\n').filter(l => l.startsWith('- ID:'));
-  const parsedPlaces = placeLines.map(l => {
+  let parsedPlaces = placeLines.map(l => {
     const parts = l.split('|').map(p => p.trim());
     const idMatch = parts[0]?.match(/ID:\s*([^\s]+)/);
     const nameMatch = parts[1]?.replace(/"/g, '');
@@ -47,43 +47,60 @@ function getSmartLocalResponse(userMessage, systemPrompt) {
     };
   }).filter(p => p.id);
 
+  // Add default iconic fallback places to pool if pool is sparse
+  const fallbackPool = [
+    { id: 'fallback_jebel_jais', name: 'Jebel Jais Drive & Peak Zipline', category: 'outdoor' },
+    { id: 'fallback_kite_beach', name: 'Kite Beach Sunset & Cafes', category: 'outdoor' },
+    { id: 'fallback_tom_serge', name: 'Tom & Serg Specialty Coffee', category: 'cafe' },
+    { id: 'fallback_al_serkal', name: 'Alserkal Avenue Art & Coffee', category: 'culture' },
+    { id: 'fallback_pierchic', name: 'Pierchic Fine Dining', category: 'food' },
+    { id: 'fallback_museum_future', name: 'Museum of the Future', category: 'culture' },
+    { id: 'fallback_louvre_ad', name: 'Louvre Abu Dhabi', category: 'culture' },
+    { id: 'fallback_burj_khalifa', name: 'Burj Khalifa', category: 'attraction' },
+    { id: 'fallback_dubai_frame', name: 'Dubai Frame', category: 'attraction' }
+  ];
+
+  for (const fp of fallbackPool) {
+    if (!parsedPlaces.some(p => p.id === fp.id)) {
+      parsedPlaces.push(fp);
+    }
+  }
+
   let matchedPlaces = [];
   let categoryLabel = 'spots';
-  let intro = '';
+  let introHeader = '';
 
-  if (msg.includes('cafe') || msg.includes('coffee') || msg.includes('espresso') || msg.includes('matcha')) {
+  if (msg.includes('outdoor') || msg.includes('park') || msg.includes('walk') || msg.includes('beach') || msg.includes('nature') || msg.includes('road trip') || msg.includes('trip')) {
+    categoryLabel = 'outdoor & road trip spots';
+    matchedPlaces = parsedPlaces.filter(p => p.category.includes('outdoor') || p.id === 'fallback_jebel_jais' || p.id === 'fallback_kite_beach' || p.name.toLowerCase().includes('park') || p.name.toLowerCase().includes('beach'));
+    introHeader = "Here are iconic outdoor activities and road trip spots across the UAE!";
+  } else if (msg.includes('cafe') || msg.includes('coffee') || msg.includes('espresso') || msg.includes('matcha') || msg.includes('work')) {
     categoryLabel = 'cafes & coffee shops';
-    matchedPlaces = parsedPlaces.filter(p => p.category.includes('cafe') || p.name.toLowerCase().includes('cafe') || p.name.toLowerCase().includes('coffee'));
-    intro = "Here are top-rated local cafes nearby where you can grab a fresh brew and relax! ☕";
+    matchedPlaces = parsedPlaces.filter(p => p.category.includes('cafe') || p.id === 'fallback_tom_serge' || p.id === 'fallback_al_serkal' || p.name.toLowerCase().includes('cafe') || p.name.toLowerCase().includes('coffee'));
+    introHeader = "Here are top-rated specialty coffee shops nearby with great brews and workspace vibes!";
   } else if (msg.includes('eat') || msg.includes('food') || msg.includes('restaurant') || msg.includes('taco') || msg.includes('burger') || msg.includes('dinner') || msg.includes('lunch') || msg.includes('cheap')) {
     categoryLabel = 'dining spots';
-    matchedPlaces = parsedPlaces.filter(p => p.category.includes('food') || p.category.includes('restaurant') || p.name.toLowerCase().includes('restaurant') || p.name.toLowerCase().includes('bistro'));
-    intro = "Here are fantastic dining spots close to your location! 🌮🍽️";
-  } else if (msg.includes('outdoor') || msg.includes('park') || msg.includes('walk') || msg.includes('beach') || msg.includes('nature')) {
-    categoryLabel = 'outdoor spots';
-    matchedPlaces = parsedPlaces.filter(p => p.category.includes('outdoor') || p.name.toLowerCase().includes('park') || p.name.toLowerCase().includes('beach'));
-    intro = "Enjoy the fresh air! Here are awesome outdoor parks and scenic places nearby. 🌿🏃";
-  } else if (msg.includes('sport') || msg.includes('match') || msg.includes('football') || msg.includes('basketball') || msg.includes('gym')) {
-    categoryLabel = 'sports & fitness venues';
-    matchedPlaces = parsedPlaces.filter(p => p.category.includes('sports') || p.name.toLowerCase().includes('arena') || p.name.toLowerCase().includes('court'));
-    intro = "Ready to move? Check out these sports facilities and recreation grounds near you! ⚽🏀";
-  } else if (msg.includes('night') || msg.includes('bar') || msg.includes('drink') || msg.includes('club') || msg.includes('loung')) {
-    categoryLabel = 'nightlife spots';
-    matchedPlaces = parsedPlaces.filter(p => p.category.includes('nightlife') || p.name.toLowerCase().includes('lounge') || p.name.toLowerCase().includes('bar'));
-    intro = "Looking for evening vibes? Here are top nightlife and social spots close by! 🍸✨";
+    matchedPlaces = parsedPlaces.filter(p => p.category.includes('food') || p.category.includes('restaurant') || p.id === 'fallback_pierchic' || p.name.toLowerCase().includes('restaurant') || p.name.toLowerCase().includes('bistro'));
+    introHeader = "Here are top-rated dining spots and culinary gems recommended for you!";
+  } else if (msg.includes('culture') || msg.includes('art') || msg.includes('museum') || msg.includes('landmark') || msg.includes('exhibition')) {
+    categoryLabel = 'cultural landmarks';
+    matchedPlaces = parsedPlaces.filter(p => p.category.includes('culture') || p.category.includes('attraction') || p.id === 'fallback_museum_future' || p.id === 'fallback_louvre_ad' || p.id === 'fallback_dubai_frame');
+    introHeader = "Here are world-class cultural landmarks and architectural icons in the UAE!";
   } else {
     matchedPlaces = parsedPlaces.slice(0, 4);
-    intro = "Based on your location, here are great spots recommended for you right now! ✨";
+    introHeader = "Based on your location, here are top-rated spots recommended for you right now!";
   }
 
   if (matchedPlaces.length === 0) {
-    matchedPlaces = parsedPlaces.slice(0, 4);
+    matchedPlaces = fallbackPool.slice(0, 3);
   }
 
-  const selectedIds = matchedPlaces.slice(0, 4).map(p => p.id);
+  const selected = matchedPlaces.slice(0, 3);
+  const selectedIds = selected.map(p => p.id);
+  const placeNamesStr = selected.map(p => `**${p.name}**`).join(', ');
 
   return {
-    reply: `${intro}\n\nI've highlighted ${selectedIds.length} recommended ${categoryLabel} for you below. Tap any spot to view details or directions!`,
+    reply: `${introHeader} Featuring ${placeNamesStr}. Tap any card below to view details or official booking options!`,
     placeIds: selectedIds,
     fallback: true
   };
@@ -174,14 +191,41 @@ function extractPlaceIds(content) {
     } catch { /* ignore parse errors */ }
   }
 
-  const inlineIds = content.match(/osm-(?:node|way)-\d+/g);
+  const inlineIds = content.match(/(?:osm-(?:node|way)-\d+|fallback_[a-z0-9_]+)/g);
   if (inlineIds) {
     for (const id of inlineIds) {
       if (!placeIds.includes(id)) placeIds.push(id);
     }
   }
 
-  return placeIds.slice(0, 8);
+  // Extract from entity names mentioned in text
+  const contentLower = (content || '').toLowerCase();
+  const knownEntities = [
+    { id: 'fallback_jebel_jais', match: ['jebel jais', 'zipline'] },
+    { id: 'fallback_kite_beach', match: ['kite beach', 'beach'] },
+    { id: 'fallback_burj_khalifa', match: ['burj khalifa'] },
+    { id: 'fallback_dubai_frame', match: ['dubai frame'] },
+    { id: 'fallback_museum_future', match: ['museum of the future'] },
+    { id: 'fallback_louvre_ad', match: ['louvre abu dhabi', 'louvre'] },
+    { id: 'fallback_szgm', match: ['sheikh zayed grand mosque', 'grand mosque'] },
+    { id: 'fallback_tom_serge', match: ['tom & serg', 'tom and serg'] },
+    { id: 'fallback_pierchic', match: ['pierchic'] },
+    { id: 'fallback_atlantis', match: ['aquaventure', 'atlantis'] },
+    { id: 'fallback_global_village', match: ['global village'] },
+    { id: 'fallback_al_serkal', match: ['alserkal', 'al serkal'] },
+    { id: 'fallback_dubai_mall', match: ['dubai mall'] },
+    { id: 'fallback_yas_island', match: ['yas island'] }
+  ];
+
+  for (const entity of knownEntities) {
+    if (entity.match.some(m => contentLower.includes(m))) {
+      if (!placeIds.includes(entity.id)) {
+        placeIds.push(entity.id);
+      }
+    }
+  }
+
+  return placeIds.slice(0, 6);
 }
 
 export function getHealthStatus() {

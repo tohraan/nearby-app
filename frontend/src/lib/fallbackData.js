@@ -27,7 +27,7 @@ export const FALLBACK_PLACES = [
     city: "Dubai",
     address: "Zabeel Park Jogging Track, Za'abeel",
     rating: 4.7,
-    image: "https://images.unsplash.com/photo-1578895210405-907db48a7812?w=800&auto=format&fit=crop&q=80",
+    image: "https://images.unsplash.com/photo-1580674684081-7617fbf3d745?w=800&auto=format&fit=crop&q=80",
     website: "https://www.dubaiframe.ae/",
     actionLabel: "Book Dubai Frame Tickets",
     actionUrl: "https://www.dubaiframe.ae/en",

@@ -141,12 +141,28 @@ export default function Chat({ onNavigateToPlace }) {
           if (!place) {
             place = FALLBACK_PLACES.find(p => p.id === id);
           }
-          if (place) places.push(place);
+          if (place && !places.some(p => p.id === place.id)) {
+            places.push(place);
+          }
         }
       }
 
       if (places.length === 0) {
-        places = FALLBACK_PLACES.slice(0, 3);
+        const fullText = (reply + ' ' + trimmed).toLowerCase();
+        places = FALLBACK_PLACES.filter(p => fullText.includes(p.name.toLowerCase()) || (p.city && fullText.includes(p.city.toLowerCase())));
+        if (places.length === 0) {
+          if (fullText.includes('outdoor') || fullText.includes('road trip') || fullText.includes('mountain') || fullText.includes('beach')) {
+            places = FALLBACK_PLACES.filter(p => p.category === 'outdoor' || p.id === 'fallback_jebel_jais' || p.id === 'fallback_kite_beach');
+          } else if (fullText.includes('cafe') || fullText.includes('coffee') || fullText.includes('work')) {
+            places = FALLBACK_PLACES.filter(p => p.category === 'cafe' || p.id === 'fallback_tom_serge' || p.id === 'fallback_al_serkal');
+          } else if (fullText.includes('eat') || fullText.includes('food') || fullText.includes('drink')) {
+            places = FALLBACK_PLACES.filter(p => p.category === 'food' || p.id === 'fallback_pierchic');
+          } else if (fullText.includes('culture') || fullText.includes('art') || fullText.includes('museum')) {
+            places = FALLBACK_PLACES.filter(p => p.category === 'culture' || p.id === 'fallback_museum_future' || p.id === 'fallback_louvre_ad');
+          } else {
+            places = FALLBACK_PLACES.slice(0, 3);
+          }
+        }
       }
 
       setMessages([...newMsgs, { role: 'ai', text: reply, places, fallback }]);
@@ -174,7 +190,7 @@ export default function Chat({ onNavigateToPlace }) {
   }
 
   return (
-    <div className="app-shell__content chat-screen" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100dvh - 90px)' }}>
+    <div className="app-shell__content chat-screen" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100dvh - 84px)', paddingBottom: 0 }}>
       {/* ─── Hero AI Concierge Banner ─── */}
       <div
         className="neo-card"
@@ -285,6 +301,10 @@ export default function Chat({ onNavigateToPlace }) {
                         <img
                           src={getPlaceImage(place)}
                           alt={place.name}
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800&auto=format&fit=crop&q=80';
+                          }}
                           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                         />
                         <div
@@ -406,16 +426,19 @@ export default function Chat({ onNavigateToPlace }) {
         <div ref={endRef} />
       </div>
 
-      {/* ─── Sticky Input Area (Positioned Further Down) ─── */}
+      {/* ─── Sticky Input Area (Snug right on top of bottom nav bar) ─── */}
       <div
         style={{
           position: 'sticky',
           bottom: 0,
           backgroundColor: 'var(--color-cream)',
-          paddingTop: '10px',
-          paddingBottom: '24px',
+          paddingTop: '8px',
+          paddingBottom: '6px',
           flexShrink: 0,
-          zIndex: 100
+          zIndex: 100,
+          borderTop: '2px solid var(--color-black)',
+          marginInline: '-16px',
+          paddingInline: '16px'
         }}
       >
         {/* Horizontal Starter Chips */}
