@@ -1,8 +1,10 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
+import 'leaflet/dist/leaflet.css';
 import './styles/global.css';
 import './styles/components.css';
+
 
 // Register service worker for offline capability
 if ('serviceWorker' in navigator) {

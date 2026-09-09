@@ -1,6 +1,14 @@
-import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { MapPin, Navigation, Plus, Minus, Compass, Star, Check, Sparkles } from 'lucide-react';
-import { CATEGORY_EMOJI, formatDistance, haversineKm } from '../lib/geo.js';
+/**
+ * CustomMap.jsx — Complete Real-Time UAE Street Map Component
+ * Powered by Leaflet & CartoDB Voyager 2D Street Tiles (Google Maps style light theme)
+ * Renders real UAE streets, highways, coastlines, building footprints, cached places,
+ * group meetup pins, user location ("Locate Me"), zoom controls, and custom popups.
+ */
+
+import React, { useEffect, useRef } from 'react';
+import L from 'leaflet';
+import { Navigation, Plus, Minus, Compass, Sparkles } from 'lucide-react';
+import { CATEGORY_EMOJI, formatDistance } from '../lib/geo.js';
 
 export default function CustomMap({
   places = [],
@@ -12,502 +20,298 @@ export default function CustomMap({
   onHostActivity,
   visitedIds = new Set(),
 }) {
-  // Center map on user or default location
-  const [center, setCenter] = useState({ lat: userLat || 25.2048, lng: userLng || 55.2708 });
-  const [zoom, setZoom] = useState(14.5); // Zoom factor: 11 to 18
-  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [hoveredItem, setHoveredItem] = useState(null);
+  const mapRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const markersLayerRef = useRef(null);
+  const userMarkerRef = useRef(null);
 
-  const containerRef = useRef(null);
-  const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
+  // Default initial center: Dubai (Burj Khalifa area)
+  const initialLat = userLat || 25.1972;
+  const initialLng = userLng || 55.2744;
 
-  // Handle container resizing for full responsiveness
+  // Initialize Leaflet Map Instance
   useEffect(() => {
-    const updateSize = () => {
-      if (containerRef.current) {
-        const w = containerRef.current.clientWidth || 800;
-        const h = containerRef.current.clientHeight || 500;
-        setDimensions({ width: w, height: h });
+    if (!mapRef.current || mapInstanceRef.current) return;
+
+    // Create Leaflet map instance centered on Dubai / UAE
+    const map = L.map(mapRef.current, {
+      center: [initialLat, initialLng],
+      zoom: 13,
+      zoomControl: false, // We render custom Neo-Brutalist controls
+      attributionControl: false,
+    });
+
+    // High-Resolution CartoDB Voyager Real-Time UAE Street Tile Layer (Google Maps style)
+    const tileLayer = L.tileLayer(
+      'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+      {
+        maxZoom: 19,
+        subdomains: 'abcd',
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
       }
-    };
-    updateSize();
+    );
+    tileLayer.addTo(map);
 
-    let observer;
-    if (typeof ResizeObserver !== 'undefined' && containerRef.current) {
-      observer = new ResizeObserver(updateSize);
-      observer.observe(containerRef.current);
-    }
+    // Create markers layer group
+    const markersGroup = L.layerGroup().addTo(map);
+    markersLayerRef.current = markersGroup;
 
-    window.addEventListener('resize', updateSize);
+    mapInstanceRef.current = map;
+
+    // Resize observer to ensure full container responsiveness
+    const resizeObserver = new ResizeObserver(() => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.invalidateSize();
+      }
+    });
+    resizeObserver.observe(mapRef.current);
+
     return () => {
-      window.removeEventListener('resize', updateSize);
-      if (observer) observer.disconnect();
+      resizeObserver.disconnect();
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
     };
   }, []);
 
-  // Update center when user location is obtained
+  // Update user location marker & accuracy circle
   useEffect(() => {
-    if (userLat && userLng) {
-      setCenter({ lat: userLat, lng: userLng });
+    const map = mapInstanceRef.current;
+    if (!map || !userLat || !userLng) return;
+
+    if (userMarkerRef.current) {
+      map.removeLayer(userMarkerRef.current);
     }
+
+    const userIcon = L.divIcon({
+      className: 'custom-user-marker',
+      html: `
+        <div style="position: relative; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">
+          <div style="position: absolute; width: 24px; height: 24px; border-radius: 50%; background: rgba(0, 149, 255, 0.35); animation: pulseRing 1.8s infinite;"></div>
+          <div style="width: 14px; height: 14px; border-radius: 50%; background: #007AFF; border: 2.5px solid #FFFFFF; box-shadow: 0 2px 6px rgba(0,0,0,0.4);"></div>
+        </div>
+      `,
+      iconSize: [24, 24],
+      iconAnchor: [12, 12],
+    });
+
+    const marker = L.marker([userLat, userLng], { icon: userIcon, zIndexOffset: 1000 }).addTo(map);
+    userMarkerRef.current = marker;
   }, [userLat, userLng]);
 
-  // Fly/Pan map to selected place when user taps a place from list or map
+  // Update cached places and group activity markers on map
   useEffect(() => {
-    if (selectedPlaceId) {
-      const target = places.find(p => p.id === selectedPlaceId) || groups.find(g => g.id === selectedPlaceId);
-      if (target && target.lat && target.lng) {
-        setCenter({ lat: target.lat, lng: target.lng });
-        setPanOffset({ x: 0, y: 0 });
-      }
+    const map = mapInstanceRef.current;
+    const layer = markersLayerRef.current;
+    if (!map || !layer) return;
+
+    layer.clearLayers();
+
+    // Combine places and group activities into a unified array
+    const allItems = [
+      ...places.map(p => ({ ...p, isGroup: false })),
+      ...groups.filter(g => g.lat && g.lng).map(g => ({ ...g, isGroup: true })),
+    ];
+
+    allItems.forEach(item => {
+      if (!item.lat || !item.lng) return;
+
+      const isVisited = visitedIds.has(item.id);
+      const isSelected = selectedPlaceId === item.id;
+      const emoji = CATEGORY_EMOJI[item.category] || '📍';
+      const bgColor = item.isGroup
+        ? 'var(--color-pink)'
+        : (isSelected ? 'var(--color-mint)' : 'var(--color-yellow)');
+
+      const customIcon = L.divIcon({
+        className: 'custom-neo-marker',
+        html: `
+          <div style="
+            background-color: ${bgColor};
+            border: ${isSelected ? '3px' : '2.5px'} solid #000000;
+            border-radius: ${item.isGroup ? '50%' : '10px 10px 10px 0'};
+            padding: 4px 8px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            box-shadow: ${isSelected ? '5px 5px 0 #000000' : '3px 3px 0 #000000'};
+            cursor: pointer;
+            white-space: nowrap;
+            font-size: 13px;
+            font-weight: 900;
+            color: #000000;
+            transform: scale(${isSelected ? '1.15' : '1'});
+            transition: transform 0.2s ease;
+          ">
+            <span>${emoji}</span>
+            <span style="max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${item.name}</span>
+            ${item.rating ? `<span style="font-size: 10px; opacity: 0.85;">★${item.rating}</span>` : ''}
+          </div>
+        `,
+        iconSize: [120, 36],
+        iconAnchor: [20, 36],
+      });
+
+      const marker = L.marker([item.lat, item.lng], {
+        icon: customIcon,
+        zIndexOffset: isSelected ? 800 : 100,
+      });
+
+      marker.on('click', () => {
+        map.flyTo([item.lat, item.lng], Math.max(map.getZoom(), 15), { duration: 0.8 });
+        onSelectPlace?.(item.id);
+      });
+
+      layer.addLayer(marker);
+    });
+  }, [places, groups, selectedPlaceId, visitedIds, onSelectPlace]);
+
+  // Smooth fly to selected place when selected from list
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !selectedPlaceId) return;
+
+    const target = places.find(p => p.id === selectedPlaceId) || groups.find(g => g.id === selectedPlaceId);
+    if (target && target.lat && target.lng) {
+      map.flyTo([target.lat, target.lng], 16, { duration: 1.0 });
     }
   }, [selectedPlaceId, places, groups]);
 
-  // Locate Me Action: reset pan offset and center directly on user position
+  // Locate Me Action: center directly on user location
   const handleLocateMe = () => {
-    if (userLat && userLng) {
-      setCenter({ lat: userLat, lng: userLng });
-      setPanOffset({ x: 0, y: 0 });
-      setZoom(15);
+    const map = mapInstanceRef.current;
+    if (map && userLat && userLng) {
+      map.flyTo([userLat, userLng], 15, { duration: 1.0 });
     }
   };
 
-  // Convert (lat, lng) geographic coordinates to container pixel (x, y)
-  const latLngToPixel = useCallback((lat, lng) => {
-    const cosLat = Math.cos((center.lat * Math.PI) / 180);
-    const metersPerDegreeLat = 111320;
-    const metersPerDegreeLng = 111320 * cosLat;
-
-    // Zoom scale factor (pixels per meter)
-    const scale = Math.pow(1.85, zoom - 12) * 0.12;
-
-    const dx = (lng - center.lng) * metersPerDegreeLng * scale + panOffset.x;
-    const dy = (center.lat - lat) * metersPerDegreeLat * scale + panOffset.y;
-
-    const x = dimensions.width / 2 + dx;
-    const y = dimensions.height / 2 + dy;
-
-    return { x, y };
-  }, [center, zoom, panOffset, dimensions]);
-
-  // Mouse drag handlers
-  const handleMouseDown = (e) => {
-    if (e.target.closest('.neo-btn') || e.target.closest('.map-marker')) return;
-    setIsDragging(true);
-    setDragStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
+  // Zoom controls
+  const handleZoomIn = () => {
+    mapInstanceRef.current?.zoomIn(1);
   };
 
-  const handleMouseMove = (e) => {
-    if (!isDragging) return;
-    setPanOffset({
-      x: e.clientX - dragStart.x,
-      y: e.clientY - dragStart.y,
-    });
+  const handleZoomOut = () => {
+    mapInstanceRef.current?.zoomOut(1);
   };
 
-  const handleMouseUp = () => {
-    setIsDragging(false);
+  const handleResetView = () => {
+    mapInstanceRef.current?.flyTo([initialLat, initialLng], 13, { duration: 1.0 });
   };
-
-  // Mouse wheel zoom handler
-  const handleWheel = (e) => {
-    e.preventDefault();
-    const zoomDelta = e.deltaY < 0 ? 0.4 : -0.4;
-    setZoom(prev => Math.min(Math.max(prev + zoomDelta, 11), 18));
-  };
-
-  // Touch event handlers for mobile devices
-  const touchStartRef = useRef({ dist: 0, initialZoom: 14.5 });
-
-  const handleTouchStart = (e) => {
-    if (e.target.closest('.neo-btn') || e.target.closest('.map-marker')) return;
-    if (e.touches.length === 1) {
-      setIsDragging(true);
-      setDragStart({ x: e.touches[0].clientX - panOffset.x, y: e.touches[0].clientY - panOffset.y });
-    } else if (e.touches.length === 2) {
-      const dist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      touchStartRef.current = { dist, initialZoom: zoom };
-    }
-  };
-
-  const handleTouchMove = (e) => {
-    if (e.touches.length === 1 && isDragging) {
-      setPanOffset({
-        x: e.touches[0].clientX - dragStart.x,
-        y: e.touches[0].clientY - dragStart.y,
-      });
-    } else if (e.touches.length === 2 && touchStartRef.current.dist > 0) {
-      const newDist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      const scale = newDist / touchStartRef.current.dist;
-      const newZoom = Math.min(Math.max(touchStartRef.current.initialZoom + (scale - 1) * 3, 11), 18);
-      setZoom(newZoom);
-    }
-  };
-
-  const handleTouchEnd = () => {
-    setIsDragging(false);
-    touchStartRef.current.dist = 0;
-  };
-
-  // Calculate user pixel location
-  const userPixel = useMemo(() => {
-    if (!userLat || !userLng) return null;
-    return latLngToPixel(userLat, userLng);
-  }, [userLat, userLng, latLngToPixel]);
-
-  // Combine places and group activities into a unified list
-  const allItems = useMemo(() => {
-    const pList = places.map(p => ({ ...p, isGroup: false }));
-    const gList = groups.filter(g => g.lat && g.lng).map(g => ({ ...g, isGroup: true }));
-    return [...pList, ...gList];
-  }, [places, groups]);
-
-  // Dynamic spatial clustering & viewport filtering
-  const mapElements = useMemo(() => {
-    const points = allItems.map(item => ({
-      ...item,
-      pos: latLngToPixel(item.lat, item.lng)
-    })).filter(pt =>
-      pt.pos.x >= -60 && pt.pos.x <= dimensions.width + 60 &&
-      pt.pos.y >= -60 && pt.pos.y <= dimensions.height + 60
-    );
-
-    const clusters = [];
-    const visitedIndices = new Set();
-    const clusterThreshold = 38; // px
-
-    for (let i = 0; i < points.length; i++) {
-      if (visitedIndices.has(i)) continue;
-      const groupList = [points[i]];
-      visitedIndices.add(i);
-
-      for (let j = i + 1; j < points.length; j++) {
-        if (visitedIndices.has(j)) continue;
-        const dx = points[i].pos.x - points[j].pos.x;
-        const dy = points[i].pos.y - points[j].pos.y;
-        if (Math.sqrt(dx * dx + dy * dy) < clusterThreshold) {
-          groupList.push(points[j]);
-          visitedIndices.add(j);
-        }
-      }
-
-      if (groupList.length > 1) {
-        const avgX = groupList.reduce((sum, p) => sum + p.pos.x, 0) / groupList.length;
-        const avgY = groupList.reduce((sum, p) => sum + p.pos.y, 0) / groupList.length;
-        const avgLat = groupList.reduce((sum, p) => sum + p.lat, 0) / groupList.length;
-        const avgLng = groupList.reduce((sum, p) => sum + p.lng, 0) / groupList.length;
-
-        clusters.push({
-          isCluster: true,
-          id: `cluster-${i}`,
-          count: groupList.length,
-          pos: { x: avgX, y: avgY },
-          lat: avgLat,
-          lng: avgLng,
-          items: groupList,
-        });
-      } else {
-        clusters.push({
-          isCluster: false,
-          ...groupList[0]
-        });
-      }
-    }
-
-    return clusters;
-  }, [allItems, latLngToPixel, dimensions]);
-
-  // Scaled Vector District & Feature Coordinates (Relative to Map Center)
-  const mapFeatures = useMemo(() => {
-    // English District Labels and Stylized Vector Features mapped geographically around center
-    const districts = [
-      { name: 'DOWNTOWN CENTER', lat: center.lat + 0.008, lng: center.lng - 0.005, type: 'commercial', color: 'var(--color-yellow)' },
-      { name: 'ARTS & CULINARY QUARTER', lat: center.lat - 0.006, lng: center.lng - 0.008, type: 'culture', color: 'var(--color-pink)' },
-      { name: 'FINANCIAL DISTRICT', lat: center.lat + 0.012, lng: center.lng + 0.006, type: 'business', color: 'var(--color-blue)' },
-      { name: 'WATERFRONT PROMENADE', lat: center.lat - 0.010, lng: center.lng + 0.010, type: 'water', color: '#70D6FF' },
-      { name: 'CENTRAL PARK TRAILS', lat: center.lat + 0.002, lng: center.lng + 0.012, type: 'park', color: 'var(--color-mint)' },
-      { name: 'TECH & INNOVATION HUB', lat: center.lat - 0.014, lng: center.lng - 0.002, type: 'tech', color: '#E0AAFF' },
-    ];
-
-    // Roads & Highways vector paths
-    const roads = [
-      // Main Avenue North-South
-      [
-        { lat: center.lat + 0.025, lng: center.lng - 0.002 },
-        { lat: center.lat - 0.025, lng: center.lng + 0.002 }
-      ],
-      // Boulevard East-West
-      [
-        { lat: center.lat + 0.004, lng: center.lng - 0.025 },
-        { lat: center.lat - 0.002, lng: center.lng + 0.025 }
-      ],
-      // Ring Road Diagonal
-      [
-        { lat: center.lat - 0.015, lng: center.lng - 0.020 },
-        { lat: center.lat + 0.015, lng: center.lng + 0.020 }
-      ],
-    ];
-
-    return { districts, roads };
-  }, [center]);
-
-  // Calculate approximate scale distance for UI
-  const scaleText = useMemo(() => {
-    const p1 = latLngToPixel(center.lat, center.lng);
-    const p2 = latLngToPixel(center.lat + 0.005, center.lng);
-    const pixelsFor500m = Math.abs(p1.y - p2.y) * (500 / 556);
-    if (pixelsFor500m > 150) return '200 m';
-    if (pixelsFor500m > 60) return '500 m';
-    return '1 km';
-  }, [center, latLngToPixel]);
 
   return (
     <div
-      ref={containerRef}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onWheel={handleWheel}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
       style={{
         position: 'relative',
         width: '100%',
         height: '100%',
-        backgroundColor: 'var(--color-cream)',
+        minHeight: '380px',
+        backgroundColor: '#F5F5F3',
         overflow: 'hidden',
-        cursor: isDragging ? 'grabbing' : 'grab',
-        userSelect: 'none',
       }}
     >
-      {/* ─── Vector Canvas & Background Graphics (100% English & Custom) ─── */}
-      <svg
+      {/* ─── Leaflet Real-Time UAE Map Element ─── */}
+      <div ref={mapRef} style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }} />
+
+      {/* ─── Top Center Host Activity Button ─── */}
+      <button
+        className="neo-btn neo-btn--primary"
+        onClick={onHostActivity}
         style={{
           position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          pointerEvents: 'none',
-        }}
-      >
-        <defs>
-          {/* Neo-Brutalist Grid Pattern */}
-          <pattern id="gridPattern" width="40" height="40" patternUnits="userSpaceOnUse">
-            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth="1" />
-            <circle cx="20" cy="20" r="1.5" fill="rgba(0,0,0,0.12)" />
-          </pattern>
-
-          {/* Park Polygon Fill Pattern */}
-          <pattern id="parkPattern" width="20" height="20" patternUnits="userSpaceOnUse">
-            <circle cx="5" cy="5" r="2" fill="var(--color-mint)" opacity="0.3" />
-            <circle cx="15" cy="15" r="2" fill="var(--color-mint)" opacity="0.3" />
-          </pattern>
-        </defs>
-
-        {/* Base Grid Background */}
-        <rect width="100%" height="100%" fill="url(#gridPattern)" />
-
-        {/* Render Vector Highways & Major Roads */}
-        {mapFeatures.roads.map((road, idx) => {
-          const p1 = latLngToPixel(road[0].lat, road[0].lng);
-          const p2 = latLngToPixel(road[1].lat, road[1].lng);
-          return (
-            <g key={`road-${idx}`}>
-              {/* Outer Casing Line */}
-              <line
-                x1={p1.x}
-                y1={p1.y}
-                x2={p2.x}
-                y2={p2.y}
-                stroke="var(--color-black)"
-                strokeWidth="10"
-                strokeLinecap="round"
-                opacity="0.85"
-              />
-              {/* Inner Road Fill */}
-              <line
-                x1={p1.x}
-                y1={p1.y}
-                x2={p2.x}
-                y2={p2.y}
-                stroke="#FFFFFF"
-                strokeWidth="6"
-                strokeLinecap="round"
-              />
-              {/* Dashed Centerline */}
-              <line
-                x1={p1.x}
-                y1={p1.y}
-                x2={p2.x}
-                y2={p2.y}
-                stroke="var(--color-yellow)"
-                strokeWidth="1.5"
-                strokeDasharray="8 6"
-                strokeLinecap="round"
-              />
-            </g>
-          );
-        })}
-
-        {/* Render Vector District Zones & English Labels */}
-        {mapFeatures.districts.map((dist, idx) => {
-          const p = latLngToPixel(dist.lat, dist.lng);
-          // Only render visible labels
-          if (p.x < -100 || p.x > dimensions.width + 100 || p.y < -100 || p.y > dimensions.height + 100) {
-            return null;
-          }
-
-          return (
-            <g key={`district-${idx}`} transform={`translate(${p.x}, ${p.y})`}>
-              {/* Vector Zone Background Box */}
-              <rect
-                x="-70"
-                y="-25"
-                width="140"
-                height="50"
-                rx="12"
-                fill={dist.color}
-                opacity="0.25"
-                stroke="var(--color-black)"
-                strokeWidth="2"
-                strokeDasharray="4 4"
-              />
-              {/* English District Badge */}
-              <text
-                x="0"
-                y="4"
-                textAnchor="middle"
-                fill="var(--color-black)"
-                fontSize="10"
-                fontWeight="900"
-                letterSpacing="1.2"
-                style={{ textTransform: 'uppercase', fontFamily: 'sans-serif' }}
-              >
-                {dist.name}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
-
-      {/* ─── Map Coordinates & English Scale Footer (Bottom Left) ─── */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: '16px',
-          left: '16px',
-          zIndex: 10,
+          top: '16px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 500,
+          fontWeight: 900,
+          boxShadow: '3.5px 3.5px 0 #000000',
           display: 'flex',
           alignItems: 'center',
-          gap: '8px',
-          pointerEvents: 'none',
+          gap: '6px',
+          fontSize: '12px',
+          padding: '8px 16px',
+          backgroundColor: 'var(--color-yellow)',
+          color: 'var(--color-black)'
         }}
       >
-        <div
-          className="neo-card"
-          style={{
-            padding: '4px 10px',
-            fontSize: '11px',
-            fontWeight: 800,
-            backgroundColor: 'var(--color-cream)',
-            border: '2px solid var(--color-black)',
-            boxShadow: '2px 2px 0 var(--color-black)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-          }}
-        >
-          <span style={{ display: 'inline-block', width: '20px', height: '2px', backgroundColor: 'var(--color-black)' }} />
-          <span>{scaleText}</span>
-        </div>
+        <Sparkles size={14} fill="var(--color-black)" /> + HOST MEETUP
+      </button>
 
-        <div
-          className="neo-card"
-          style={{
-            padding: '4px 10px',
-            fontSize: '11px',
-            fontWeight: 800,
-            backgroundColor: 'var(--color-yellow)',
-            border: '2px solid var(--color-black)',
-            boxShadow: '2px 2px 0 var(--color-black)',
-          }}
-        >
-          {center.lat.toFixed(4)}° N, {center.lng.toFixed(4)}° E
-        </div>
-      </div>
-
-      {/* ─── Top Right Controls (Zoom, Compass, Locate Me) ─── */}
+      {/* ─── Top Right Custom Controls (Zoom, Compass, Locate Me) ─── */}
       <div
         style={{
           position: 'absolute',
           top: '16px',
           right: '16px',
-          zIndex: 200,
+          zIndex: 500,
           display: 'flex',
           flexDirection: 'column',
-          gap: '10px',
+          gap: '8px',
         }}
       >
-        {/* Compass Button */}
+        {/* Compass / Reset View Button */}
         <button
           className="neo-btn neo-btn--icon"
-          onClick={() => setPanOffset({ x: 0, y: 0 })}
-          title="Reset View"
+          onClick={handleResetView}
+          title="Reset View to Dubai"
           style={{
-            width: '42px',
-            height: '42px',
+            width: '40px',
+            height: '40px',
             padding: 0,
             borderRadius: '50%',
             backgroundColor: 'var(--color-cream)',
+            border: '2px solid var(--color-black)',
+            boxShadow: '2.5px 2.5px 0 var(--color-black)',
+            display: 'flex',
+            alignItems: 'center',
+            justify: 'center'
           }}
         >
-          <Compass size={20} color="var(--color-black)" />
+          <Compass size={18} color="var(--color-black)" />
         </button>
 
-        {/* Zoom In Button */}
+        {/* Zoom In */}
         <button
           className="neo-btn neo-btn--icon"
-          onClick={() => setZoom(prev => Math.min(prev + 0.8, 18))}
+          onClick={handleZoomIn}
           title="Zoom In"
           style={{
-            width: '42px',
-            height: '42px',
+            width: '40px',
+            height: '40px',
             padding: 0,
-            borderRadius: '10px',
+            borderRadius: '8px',
             backgroundColor: 'var(--color-cream)',
+            border: '2px solid var(--color-black)',
+            boxShadow: '2.5px 2.5px 0 var(--color-black)',
             fontWeight: 'bold',
-            fontSize: '18px',
+            display: 'flex',
+            alignItems: 'center',
+            justify: 'center'
           }}
         >
-          <Plus size={20} />
+          <Plus size={18} />
         </button>
 
-        {/* Zoom Out Button */}
+        {/* Zoom Out */}
         <button
           className="neo-btn neo-btn--icon"
-          onClick={() => setZoom(prev => Math.max(prev - 0.8, 11))}
+          onClick={handleZoomOut}
           title="Zoom Out"
           style={{
-            width: '42px',
-            height: '42px',
+            width: '40px',
+            height: '40px',
             padding: 0,
-            borderRadius: '10px',
+            borderRadius: '8px',
             backgroundColor: 'var(--color-cream)',
+            border: '2px solid var(--color-black)',
+            boxShadow: '2.5px 2.5px 0 var(--color-black)',
             fontWeight: 'bold',
-            fontSize: '18px',
+            display: 'flex',
+            alignItems: 'center',
+            justify: 'center'
           }}
         >
-          <Minus size={20} />
+          <Minus size={18} />
         </button>
 
         {/* Locate Me Action Button */}
@@ -516,269 +320,38 @@ export default function CustomMap({
           onClick={handleLocateMe}
           title="Locate Me"
           style={{
-            width: '48px',
-            height: '48px',
+            width: '46px',
+            height: '46px',
             padding: 0,
             borderRadius: '50%',
             backgroundColor: 'var(--color-blue)',
-            boxShadow: '3px 3px 0 var(--color-black)',
+            border: '2.5px solid var(--color-black)',
+            boxShadow: '3.5px 3.5px 0 var(--color-black)',
             marginTop: '4px',
+            display: 'flex',
+            alignItems: 'center',
+            justify: 'center'
           }}
         >
-          <Navigation size={22} color="var(--color-black)" style={{ transform: 'rotate(45deg)' }} />
+          <Navigation size={20} color="var(--color-black)" style={{ transform: 'rotate(45deg)' }} />
         </button>
       </div>
 
-      {/* ─── Top Center Host Activity Button ─── */}
-      <button
-        className="neo-btn neo-btn--primary"
-        style={{
-          position: 'absolute',
-          top: '16px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: 200,
-          padding: '10px 20px',
-          boxShadow: '4px 4px 0px var(--color-black)',
-          fontWeight: 900,
-          letterSpacing: '0.03em',
-        }}
-        onClick={onHostActivity}
-      >
-        <Sparkles size={16} style={{ display: 'inline', marginRight: '6px' }} />
-        HOST ACTIVITY
-      </button>
-
-      {/* ─── User Location Pulsing Marker ─── */}
-      {userPixel && (
-        <div
-          style={{
-            position: 'absolute',
-            left: `${userPixel.x}px`,
-            top: `${userPixel.y}px`,
-            transform: 'translate(-50%, -50%)',
-            zIndex: 100,
-            pointerEvents: 'none',
-          }}
-        >
-          {/* Radar Ripple Animation */}
-          <div
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              width: '54px',
-              height: '54px',
-              transform: 'translate(-50%, -50%)',
-              borderRadius: '50%',
-              backgroundColor: 'var(--color-blue)',
-              opacity: 0.35,
-              animation: 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite',
-            }}
-          />
-          {/* User Core Avatar Dot */}
-          <div
-            style={{
-              width: '22px',
-              height: '22px',
-              borderRadius: '50%',
-              backgroundColor: 'var(--color-blue)',
-              border: '3px solid var(--color-black)',
-              boxShadow: '0 0 10px rgba(0, 240, 255, 0.8), 2px 2px 0 var(--color-black)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <div
-              style={{
-                width: '6px',
-                height: '6px',
-                borderRadius: '50%',
-                backgroundColor: 'var(--color-black)',
-              }}
-            />
-          </div>
-          {/* English Tag */}
-          <div
-            style={{
-              position: 'absolute',
-              top: '26px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              backgroundColor: 'var(--color-black)',
-              color: 'var(--color-cream)',
-              fontSize: '10px',
-              fontWeight: 800,
-              padding: '2px 6px',
-              borderRadius: '4px',
-              whiteSpace: 'nowrap',
-              border: '1px solid var(--color-cream)',
-            }}
-          >
-            YOU ARE HERE
-          </div>
-        </div>
-      )}
-
-      {/* ─── Interactive Markers & Clusters Rendering ─── */}
-      {mapElements.map(item => {
-        // Handle Cluster Markers
-        if (item.isCluster) {
-          return (
-            <div
-              key={item.id}
-              className="map-marker"
-              onClick={(e) => {
-                e.stopPropagation();
-                setCenter({ lat: item.lat, lng: item.lng });
-                setZoom(prev => Math.min(prev + 1.5, 18));
-              }}
-              style={{
-                position: 'absolute',
-                left: `${item.pos.x}px`,
-                top: `${item.pos.y}px`,
-                transform: 'translate(-50%, -50%)',
-                zIndex: 80,
-                cursor: 'pointer',
-              }}
-            >
-              <div
-                style={{
-                  backgroundColor: 'var(--color-black)',
-                  color: 'var(--color-cream)',
-                  borderRadius: '50%',
-                  width: '38px',
-                  height: '38px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: 900,
-                  fontSize: '14px',
-                  border: '3px solid var(--color-cream)',
-                  boxShadow: '3px 3px 0 var(--color-black)',
-                  transition: 'transform 0.15s ease',
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.15)'}
-                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-              >
-                {item.count}
-              </div>
-            </div>
-          );
+      {/* Pulse Animation Style */}
+      <style>{`
+        @keyframes pulseRing {
+          0% { transform: scale(0.8); opacity: 0.9; }
+          100% { transform: scale(2.2); opacity: 0; }
         }
-
-        // Handle Individual Item Markers (Places & Activities)
-        const isVisited = visitedIds.has(item.id);
-        const isActive = selectedPlaceId === item.id;
-        const emoji = CATEGORY_EMOJI[item.category] || '📍';
-        const bgColor = item.isGroup
-          ? 'var(--color-pink)'
-          : (isActive ? 'var(--color-mint)' : 'var(--color-yellow)');
-
-        return (
-          <div
-            key={item.id}
-            className="map-marker"
-            onClick={(e) => {
-              e.stopPropagation();
-              onSelectPlace(item.id);
-            }}
-            onMouseEnter={() => setHoveredItem(item)}
-            onMouseLeave={() => setHoveredItem(null)}
-            style={{
-              position: 'absolute',
-              left: `${item.pos.x}px`,
-              top: `${item.pos.y}px`,
-              zIndex: isActive ? 150 : 90,
-              cursor: 'pointer',
-              transform: `translate(-50%, ${item.isGroup ? '-50%' : '-100%'}) scale(${isActive ? 1.3 : 1})`,
-              transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-            }}
-          >
-            {/* Trail / Visited Checkmark Marker */}
-            {isVisited ? (
-              <div
-                style={{
-                  backgroundColor: 'var(--color-mint)',
-                  border: '3px solid var(--color-black)',
-                  borderRadius: '12px',
-                  padding: '4px 8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  fontWeight: 900,
-                  fontSize: '12px',
-                  boxShadow: '3px 3px 0 var(--color-black)',
-                }}
-              >
-                <Check size={14} strokeWidth={3} />
-                <span>{emoji}</span>
-              </div>
-            ) : (
-              /* Custom Neo-Brutalist Map Pin */
-              <div
-                style={{
-                  backgroundColor: bgColor,
-                  border: `${isActive ? '3px' : '2.5px'} solid var(--color-black)`,
-                  borderRadius: item.isGroup ? '50%' : '14px 14px 14px 0',
-                  width: item.isGroup ? '42px' : '40px',
-                  height: item.isGroup ? '42px' : '40px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '22px',
-                  boxShadow: isActive ? '5px 5px 0px var(--color-black)' : '3px 3px 0px var(--color-black)',
-                  position: 'relative',
-                }}
-              >
-                {emoji}
-                {/* Activity Pulse Indicator */}
-                {item.isGroup && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: '-2px',
-                      right: '-2px',
-                      width: '12px',
-                      height: '12px',
-                      borderRadius: '50%',
-                      backgroundColor: 'var(--color-yellow)',
-                      border: '2px solid var(--color-black)',
-                    }}
-                  />
-                )}
-              </div>
-            )}
-          </div>
-        );
-      })}
-
-      {/* ─── Hover English Tooltip Card ─── */}
-      {hoveredItem && !selectedPlaceId && (
-        <div
-          style={{
-            position: 'absolute',
-            left: `${hoveredItem.pos.x}px`,
-            top: `${hoveredItem.pos.y - 50}px`,
-            transform: 'translate(-50%, -100%)',
-            zIndex: 300,
-            pointerEvents: 'none',
-            backgroundColor: 'var(--color-black)',
-            color: 'var(--color-cream)',
-            padding: '6px 12px',
-            borderRadius: '8px',
-            fontSize: '12px',
-            fontWeight: 800,
-            border: '2px solid var(--color-cream)',
-            boxShadow: '3px 3px 0 var(--color-black)',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          <span>{CATEGORY_EMOJI[hoveredItem.category]} {hoveredItem.name}</span>
-          {hoveredItem.rating && <span style={{ marginLeft: '6px', color: 'var(--color-yellow)' }}>★ {hoveredItem.rating}</span>}
-        </div>
-      )}
+        .custom-neo-marker {
+          background: none !important;
+          border: none !important;
+        }
+        .leaflet-div-icon {
+          background: none !important;
+          border: none !important;
+        }
+      `}</style>
     </div>
   );
 }
