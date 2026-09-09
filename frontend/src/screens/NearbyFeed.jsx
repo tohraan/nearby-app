@@ -14,6 +14,7 @@ import { FALLBACK_PLACES } from '../lib/fallbackData.js';
 import { queueAction } from '../lib/offlineSync.js';
 import api from '../lib/api.js';
 import CustomMap from '../components/CustomMap.jsx';
+import TrendingTicker from '../components/TrendingTicker.jsx';
 
 const CATEGORIES = ['all', 'food', 'cafe', 'nightlife', 'entertainment', 'outdoor', 'sports', 'culture', 'attraction', 'shopping'];
 
@@ -232,8 +233,11 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
 
   return (
     <div className="app-shell__content">
+      {/* ─── Trending Continuous Ticker ─── */}
+      <TrendingTicker onNavigateToPlace={onNavigateToPlace} onNavigateToGroup={onNavigateToGroup} />
+
       {/* ─── Hero / Onboarding ─── */}
-      <div className="nearby-hero" style={{ position: 'relative' }}>
+      <div className="nearby-hero" style={{ position: 'relative', marginTop: '16px' }}>
         <button 
           className="neo-btn neo-btn--ghost neo-btn--icon"
           style={{ position: 'absolute', top: 'var(--space-2)', right: 'var(--space-2)', background: 'var(--color-cream)' }}
