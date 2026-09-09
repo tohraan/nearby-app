@@ -28,7 +28,7 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
   const [visitedIds, setVisitedIds] = useState(new Set());
   const [category, setCategory] = useState('all');
   const [search, setSearch] = useState('');
-  const [view, setView] = useState('list');
+  const [view, setView] = useState('split');
   const [selectedPlaceId, setSelectedPlaceId] = useState(null);
   const [groups, setGroups] = useState([]);
   const [showCreateActivity, setShowCreateActivity] = useState(false);
@@ -299,9 +299,17 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
         </div>
       </div>
 
-      {/* ─── Custom Offline English Map View ─── */}
-      {view === 'map' && (
-        <div className="map-container" style={{ position: 'relative', width: '100%', height: '100%' }}>
+      {/* ─── Custom Offline English Map View (Visible by default in Split mode) ─── */}
+      {(view === 'split' || view === 'map') && (
+        <div 
+          className="map-container" 
+          style={{ 
+            position: 'relative', 
+            width: '100%', 
+            height: view === 'map' ? 'clamp(520px, 75vh, 750px)' : 'clamp(350px, 45vh, 480px)',
+            marginBottom: 'var(--space-5)'
+          }}
+        >
           <CustomMap
             places={filteredPlaces}
             groups={groups}
@@ -393,7 +401,7 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
       )}
 
       {/* ─── Places Grid / Curated View ─── */}
-      {!isBrowsing && view === 'list' && (
+      {!isBrowsing && (view === 'split' || view === 'list') && (
         <>
           <div style={{ marginBottom: 'var(--space-6)' }}>
             <h3 style={{ marginBottom: 'var(--space-3)', fontSize: '18px', fontWeight: 800, letterSpacing: '-0.02em' }}>
@@ -530,7 +538,7 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
       )}
 
       {/* ─── Search Results Grid ─── */}
-      {isBrowsing && view === 'list' && (
+      {isBrowsing && (view === 'split' || view === 'list') && (
         filteredPlaces.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state__icon">🔍</div>
@@ -611,18 +619,25 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
       {/* ─── Floating View Toggle ─── */}
       <div className="view-toggle">
         <button
-          className={`view-toggle__btn ${view === 'list' ? 'view-toggle__btn--active' : ''}`}
-          onClick={() => setView('list')}
-          aria-label="List view"
+          className={`view-toggle__btn ${view === 'split' ? 'view-toggle__btn--active' : ''}`}
+          onClick={() => setView('split')}
+          aria-label="Split view"
         >
-          <List size={16} /> LIST
+          <MapIcon size={14} /> MAP + FEED
         </button>
         <button
           className={`view-toggle__btn ${view === 'map' ? 'view-toggle__btn--active' : ''}`}
           onClick={() => setView('map')}
           aria-label="Map view"
         >
-          <MapIcon size={16} /> MAP
+          <MapPin size={14} /> MAP ONLY
+        </button>
+        <button
+          className={`view-toggle__btn ${view === 'list' ? 'view-toggle__btn--active' : ''}`}
+          onClick={() => setView('list')}
+          aria-label="List view"
+        >
+          <List size={14} /> LIST ONLY
         </button>
       </div>
 
