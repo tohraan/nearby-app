@@ -6,8 +6,15 @@ import HeroAmbientScene from '../components/ambient/HeroAmbientScene';
 // The URL for the main app routing
 const APP_URL = '/app';
 
-export default function Landing() {
+export default function Landing({ onStartExploring }) {
   const observerRef = useRef(null);
+
+  const handleCtaClick = (e) => {
+    if (onStartExploring) {
+      e.preventDefault();
+      onStartExploring(e);
+    }
+  };
 
   useEffect(() => {
     // Setup intersection observer for stagger-fade-in animation
@@ -402,7 +409,7 @@ export default function Landing() {
         <p className="landing-subheadline">
           Browse cafes, attractions, and movies nearby. Or jump into casual sports meetups to meet people around shared interests.
         </p>
-        <a href={APP_URL} className="landing-cta">
+        <a href={APP_URL} className="landing-cta" onClick={handleCtaClick}>
           Start exploring
         </a>
 
@@ -486,7 +493,7 @@ export default function Landing() {
       {/* Section 4: Secondary CTA */}
       <footer className="landing-footer">
         <h2 className="footer-headline">The UAE, but with company.</h2>
-        <a href={APP_URL} className="landing-cta">
+        <a href={APP_URL} className="landing-cta" onClick={handleCtaClick}>
           Start exploring
         </a>
         <div className="footer-bottom">
