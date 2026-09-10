@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Search, MapPin, List, Map as MapIcon, Star, Bell, ExternalLink, SlidersHorizontal, Heart, X } from 'lucide-react';
+import { Search, MapPin, List, Map as MapIcon, Star, Bell, ExternalLink, SlidersHorizontal, Heart, X, ArrowUpDown, RotateCcw } from 'lucide-react';
 import { useGeolocation } from '../hooks/useGeolocation.js';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 import { getCachedPlaces, cachePlaces, getSavedPlaceIds, savePlaceLocally, unsavePlaceLocally, getVisitedPlaceIds } from '../lib/db.js';
@@ -23,7 +23,6 @@ import VibeRouletteModal from '../components/VibeRouletteModal.jsx';
 
 const CATEGORIES = ['all', 'meetups', 'movies', 'food', 'cafe', 'nightlife', 'entertainment', 'outdoor', 'sports', 'culture', 'attraction', 'shopping'];
 
-const CITIES = ['all', 'Dubai', 'Abu Dhabi', 'Sharjah', 'Ras Al Khaimah', 'Ajman'];
 
 const DISTANCES = [
   { label: 'Any Radius', val: 'all' },
@@ -49,6 +48,7 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace, onNav
   const [search, setSearch] = useState('');
   const [selectedCity, setSelectedCity] = useState('all');
   const [selectedDistance, setSelectedDistance] = useState('all');
+  const [sortBy, setSortBy] = useState('distance'); // 'distance' | 'rating' | 'trending'
   const [view, setView] = useState('list'); // 'list' vs 'map'
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [showRoulette, setShowRoulette] = useState(false);
@@ -112,12 +112,12 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace, onNav
       setLoading(false);
     }
     load();
-  }, []);
+  }, [isOnline]);
 
   // Reset infinite scroll pagination when filters change
   useEffect(() => {
     setPage(1);
-  }, [category, search, selectedCity, selectedDistance]);
+  }, [category, search, selectedCity, selectedDistance, sortBy]);
 
   // Master Filter & Sort Engine
   const filteredPlaces = useMemo(() => {
@@ -151,8 +151,24 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace, onNav
       );
     }
 
+    // Quick Sort Engine
+    if (sortBy === 'rating') {
+      result = [...result].sort((a, b) => {
+        const ratingA = Number(a.rating) || 0;
+        const ratingB = Number(b.rating) || 0;
+        if (ratingB !== ratingA) return ratingB - ratingA;
+        return a.distance - b.distance;
+      });
+    } else if (sortBy === 'trending') {
+      result = [...result].sort((a, b) => {
+        const scoreA = (Number(a.rating) || 3) * 2 - (a.distance * 0.25);
+        const scoreB = (Number(b.rating) || 3) * 2 - (b.distance * 0.25);
+        return scoreB - scoreA;
+      });
+    }
+
     return result;
-  }, [places, lat, lng, selectedCity, selectedDistance, category, search]);
+  }, [places, lat, lng, selectedCity, selectedDistance, category, search, sortBy]);
 
   const eatDrinkPlaces = useMemo(() => {
     return filteredPlaces.filter(p => ['food', 'cafe', 'nightlife'].includes(p.category));
@@ -169,23 +185,16 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace, onNav
 
   const hasMore = visiblePlaces.length < filteredPlaces.length;
 
-  // IntersectionObserver for Continuous Infinite Scroll
-  useEffect(() => {
-    const target = observerTargetRef.current;
-    if (!target || !hasMore) return;
+  const handleResetFilters = () => {
+    setCategory('all');
+    setSearch('');
+    setSelectedCity('all');
+    setSelectedDistance('all');
+    setSortBy('distance');
+    setPage(1);
+  };
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          setPage(prev => prev + 1);
-        }
-      },
-      { rootMargin: '300px' }
-    );
-
-    observer.observe(target);
-    return () => observer.disconnect();
-  }, [hasMore]);
+  const hasActiveFilters = category !== 'all' || search || selectedCity !== 'all' || selectedDistance !== 'all' || sortBy !== 'distance';
 
   // Save/unsave handler
   const handleToggleSave = useCallback(async (placeId) => {
@@ -312,6 +321,12 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace, onNav
       const permission = await Notification.requestPermission();
       setNotificationStatus(permission);
       setShowNotificationPrompt(false);
+      if (permission === 'granted') {
+        new Notification('Notifications Enabled!', {
+          body: 'We will notify you about nearby hidden gems.',
+          icon: '/favicon.ico'
+        });
+      }
     } catch (error) {
       console.error('Error requesting notification permission:', error);
     }
@@ -490,6 +505,50 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace, onNav
                 ))}
               </div>
             </div>
+          )}
+        </div>
+
+        {/* Quick Sort Pills */}
+        <div className="quick-filter-bar" style={{ marginTop: '12px' }}>
+          <div className="quick-filter-group">
+            <span className="quick-filter-label">
+              <ArrowUpDown size={12} /> Sort:
+            </span>
+            <button
+              type="button"
+              className={`pill-btn ${sortBy === 'distance' ? 'pill-btn--active' : ''}`}
+              onClick={() => setSortBy('distance')}
+              title="Sort places by closest distance"
+            >
+              📍 Closest
+            </button>
+            <button
+              type="button"
+              className={`pill-btn ${sortBy === 'rating' ? 'pill-btn--active' : ''}`}
+              onClick={() => setSortBy('rating')}
+              title="Sort places by highest rating"
+            >
+              ⭐ Top Rated
+            </button>
+            <button
+              type="button"
+              className={`pill-btn ${sortBy === 'trending' ? 'pill-btn--active' : ''}`}
+              onClick={() => setSortBy('trending')}
+              title="Sort places by trending popularity"
+            >
+              🔥 Trending
+            </button>
+          </div>
+
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="neo-btn neo-btn--ghost neo-btn--xs"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 800, padding: '4px 8px', background: 'var(--bg-surface)' }}
+            >
+              <RotateCcw size={12} /> Reset Filters
+            </button>
           )}
         </div>
       </div>
@@ -681,9 +740,8 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace, onNav
                 selectedPlaceId={selectedPlaceId}
                 onSelectPlace={(id) => setSelectedPlaceId(id)}
                 onVisiblePlacesChange={(places) => setVisibleMapPlaces(places)}
-                onHostActivity={() => setShowCreateActivity(true)}
-                visitedIds={visitedIds}
               />
+            </div>
             </div>
             
             <div className={`split-view-panel ${selectedPlaceId ? 'split-view-panel--expanded' : 'split-view-panel--default'}`} style={{ overflowY: selectedPlaceId ? 'auto' : 'visible' }}>
