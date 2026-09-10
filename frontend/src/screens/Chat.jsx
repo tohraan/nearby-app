@@ -140,7 +140,7 @@ export default function Chat({ onNavigateToPlace }) {
     const defaultInitial = [
       {
         role: 'ai',
-        text: "Yo! I'm Nearby Bot 🤖. Ask me for cafe recommendations, hidden speakeasies, sunset spots, or select a vibe card below!",
+        text: 'Yo! I\'m Nearby Bot 🤖. Ask me for cafe recommendations, hidden speakeasies, sunset spots, or select a vibe card below!',
         places: []
       }
     ];
@@ -160,8 +160,19 @@ export default function Chat({ onNavigateToPlace }) {
     setInput('');
     setLoading(true);
 
+    const startTime = Date.now();
+    // Randomized minimum delay window: 1.0 - 1.8s window
+    const minDelayMs = 1000 + Math.random() * 800;
+
     try {
-      const { reply, placeIds, fallback } = await api.chat(trimmed, lat, lng);
+      const apiPromise = api.chat(trimmed, lat, lng);
+      const { reply, placeIds, fallback } = await apiPromise;
+
+      // Ensure minimum delay is respected (without slowing down responses that take longer than minDelay)
+      const elapsedTime = Date.now() - startTime;
+      if (elapsedTime < minDelayMs) {
+        await new Promise(resolve => setTimeout(resolve, minDelayMs - elapsedTime));
+      }
 
       let places = [];
       if (placeIds && placeIds.length > 0) {
@@ -194,12 +205,17 @@ export default function Chat({ onNavigateToPlace }) {
         }
       }
 
-      setMessages([...newMsgs, { role: 'ai', text: reply, places, fallback }]);
+      setMessages([...newMsgs, { role: 'ai', text: reply, places, fallback, easeIn: true }]);
     } catch (err) {
+      const elapsedTime = Date.now() - startTime;
+      if (elapsedTime < minDelayMs) {
+        await new Promise(resolve => setTimeout(resolve, minDelayMs - elapsedTime));
+      }
       setMessages([...newMsgs, {
         role: 'ai',
         text: 'Sorry, I got disconnected for a sec! Try asking again.',
-        error: true
+        error: true,
+        easeIn: true
       }]);
     } finally {
       setLoading(false);
@@ -291,6 +307,7 @@ export default function Chat({ onNavigateToPlace }) {
           return (
             <div
               key={i}
+              className={!isUser && msg.easeIn ? 'chat-msg--ease-in' : ''}
               style={{
                 display: 'flex',
                 flexDirection: 'column',
@@ -463,27 +480,42 @@ export default function Chat({ onNavigateToPlace }) {
           </div>
         )}
 
-        {/* Thinking State */}
+        {/* Themed AI Guide Loading State — Left-aligned message bubble position */}
         {loading && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-            <div
-              style={{
-                width: '24px',
-                height: '24px',
-                borderRadius: '50%',
-                backgroundColor: 'var(--color-yellow)',
-                border: '1px solid var(--color-black)',
-                display: 'flex',
-                alignItems: 'center',
-                justify: 'center',
-                fontSize: '12px'
-              }}
-            >
-              🤖
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', maxWidth: '88%', alignSelf: 'flex-start', width: '100%', marginTop: '4px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+              <div
+                style={{
+                  width: '24px',
+                  height: '24px',
+                  borderRadius: '50%',
+                  backgroundColor: 'var(--color-yellow)',
+                  border: '1.5px solid var(--color-black)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justify: 'center',
+                  fontSize: '12px'
+                }}
+              >
+                🤖
+              </div>
+              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)' }}>
+                Nearby Bot
+              </span>
             </div>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: 600, backgroundColor: 'var(--color-white)', border: '1px solid var(--border-default)', borderRadius: '8px' }}>
-              <Loader2 size={14} className="spin-icon" style={{ animation: 'spin 1s linear infinite' }} />
-              <span>{STATUS_WORDS[statusIndex]}</span>
+
+            <div className="guide-loading-bubble">
+              <div className="radar-scanner">
+                <Sparkles size={12} color="var(--color-black)" />
+              </div>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-black)', fontFamily: 'var(--font-secondary)' }}>
+                {STATUS_WORDS[statusIndex]}
+              </span>
+              <div className="loading-dots-themed">
+                <span />
+                <span />
+                <span />
+              </div>
             </div>
           </div>
         )}

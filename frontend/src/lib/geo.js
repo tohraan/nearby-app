@@ -51,10 +51,13 @@ export const DEFAULT_LNG = 55.2744;
 
 // Category emoji mapping
 export const CATEGORY_EMOJI = {
+  all: '✨',
+  meetups: '🏐',
+  movies: '🎬',
   food: '🍽️',
   cafe: '☕',
   nightlife: '🍸',
-  entertainment: '🎬',
+  entertainment: '🎭',
   outdoor: '🌿',
   sports: '⚽',
   culture: '🏛️',
@@ -65,6 +68,9 @@ export const CATEGORY_EMOJI = {
 };
 
 export const CATEGORY_LABELS = {
+  all: 'All',
+  meetups: 'Meetups',
+  movies: 'Movies',
   food: 'Food',
   cafe: 'Cafe',
   nightlife: 'Nightlife',

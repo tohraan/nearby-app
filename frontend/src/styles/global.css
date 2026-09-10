@@ -3,7 +3,7 @@
    ═══════════════════════════════════════════════════════════ */
 
 @import url('https://fonts.cdnfonts.com/css/minecraft-4');
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700;800;900&display=swap');
 @import './design-tokens.css';
 
 /* ─── Reset ─── */
@@ -23,7 +23,7 @@ html {
 }
 
 body {
-  font-family: var(--font-sans);
+  font-family: var(--font-secondary);
   font-weight: var(--font-regular);
   font-size: 15px;
   line-height: 1.5;

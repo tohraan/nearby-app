@@ -6,12 +6,16 @@ import { getCachedPlaces, getSavedPlaceIds, savePlaceLocally, unsavePlaceLocally
 import { sortByDistance, formatDistance, CATEGORY_EMOJI, CATEGORY_LABELS, getPlaceImage, getActionableUrl, getActionLabel } from '../lib/geo.js';
 
 import { FALLBACK_PLACES } from '../lib/fallbackData.js';
+import { FALLBACK_MEETUPS } from '../lib/meetupData.js';
+import { FALLBACK_MOVIES } from '../lib/movieData.js';
 import { queueAction } from '../lib/offlineSync.js';
 import api from '../lib/api.js';
 import CustomMap from '../components/CustomMap.jsx';
 import TrendingTicker from '../components/TrendingTicker.jsx';
+import MeetupCard from '../components/MeetupCard.jsx';
+import MovieCard from '../components/MovieCard.jsx';
 
-const CATEGORIES = ['all', 'food', 'cafe', 'nightlife', 'entertainment', 'outdoor', 'sports', 'culture', 'attraction', 'shopping'];
+const CATEGORIES = ['all', 'meetups', 'movies', 'food', 'cafe', 'nightlife', 'entertainment', 'outdoor', 'sports', 'culture', 'attraction', 'shopping'];
 
 const CITIES = ['all', 'Dubai', 'Abu Dhabi', 'Sharjah', 'Ras Al Khaimah', 'Ajman'];
 
@@ -24,7 +28,7 @@ const DISTANCES = [
   { label: '< 50 km', val: '50' }
 ];
 
-export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
+export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace, onNavigateToMeetup, onNavigateToMovie, onHostMeetup }) {
   const { lat, lng } = useGeolocation();
   const isOnline = useOnlineStatus();
 
@@ -464,42 +468,101 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
       {/* ─── Main Results Discovery Grid (List View) ─── */}
       {view === 'list' && (
         <div style={{ marginBottom: '32px' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
-            <h2 style={{ margin: 0, fontFamily: 'var(--font-serif)', fontSize: '22px', fontWeight: 700 }}>
-              Popular Near You ({filteredPlaces.length})
-            </h2>
-            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-              Showing {visiblePlaces.length} of {filteredPlaces.length} spots
-            </span>
-          </div>
+          {category === 'meetups' ? (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+                <div>
+                  <h2 style={{ margin: 0, fontFamily: 'var(--font-serif)', fontSize: '22px', fontWeight: 700 }}>
+                    🏐 Sports Meetups ({FALLBACK_MEETUPS.length})
+                  </h2>
+                  <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontFamily: 'var(--font-secondary)' }}>
+                    Join sports sessions happening across Dubai & UAE
+                  </span>
+                </div>
 
-          {visiblePlaces.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-state__icon">🔍</div>
-              <div className="empty-state__title">No spots match your filters</div>
-              <div className="empty-state__desc">Try adjusting your city, radius, or category filters above!</div>
+                <button 
+                  className="neo-btn neo-btn--sm neo-btn--primary"
+                  onClick={onHostMeetup}
+                  style={{ fontWeight: 800 }}
+                >
+                  + Host Meetup
+                </button>
+              </div>
+
+              <div className="discovery-grid">
+                {FALLBACK_MEETUPS.map(m => (
+                  <MeetupCard 
+                    key={m.id} 
+                    meetup={m} 
+                    onSelect={() => onNavigateToMeetup?.(m.id)} 
+                    onJoin={() => onNavigateToMeetup?.(m.id)}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : category === 'movies' ? (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+                <div>
+                  <h2 style={{ margin: 0, fontFamily: 'var(--font-serif)', fontSize: '22px', fontWeight: 700 }}>
+                    🎬 Movies Nearby ({FALLBACK_MOVIES.length})
+                  </h2>
+                  <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontFamily: 'var(--font-secondary)' }}>
+                    Now showing across Reel, VOX & Novo cinemas
+                  </span>
+                </div>
+              </div>
+
+              <div className="discovery-grid">
+                {FALLBACK_MOVIES.map(m => (
+                  <MovieCard 
+                    key={m.id} 
+                    movie={m} 
+                    onSelect={() => onNavigateToMovie?.(m.id)} 
+                  />
+                ))}
+              </div>
             </div>
           ) : (
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-                gap: '16px'
-              }}
-            >
-              {visiblePlaces.map(place => {
+            <>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+                <h2 style={{ margin: 0, fontFamily: 'var(--font-serif)', fontSize: '22px', fontWeight: 700 }}>
+                  Popular Near You ({filteredPlaces.length})
+                </h2>
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                  Showing {visiblePlaces.length} of {filteredPlaces.length} spots
+                </span>
+              </div>
+
+              {visiblePlaces.length === 0 ? (
+                <div className="empty-state">
+                  <div className="empty-state__icon">🔍</div>
+                  <div className="empty-state__title">No spots match your filters</div>
+                  <div className="empty-state__desc">Try adjusting your city, radius, or category filters above!</div>
+                </div>
+              ) : (
+                <div
+                  className="discovery-grid"
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    gap: '18px'
+                  }}
+                >
+                  {visiblePlaces.map(place => {
                 const ctaLabel = getActionLabel(place);
                 const isSaved = savedIds.has(place.id);
+                const addressExcerpt = place.address ? (place.address.length > 38 ? place.address.slice(0, 38) + '...' : place.address) : null;
 
                 return (
                   <div 
                     key={place.id} 
                     className="neo-card neo-card--clickable place-card" 
-                    style={{ padding: '12px', display: 'flex', flexDirection: 'column' }}
+                    style={{ padding: '14px', display: 'flex', flexDirection: 'column', height: '100%' }}
                     onClick={() => onNavigateToPlace?.(place.id)}
                   >
-                    {/* Clean photo - NO category badge on photo! */}
-                    <div className="place-card__image" style={{ position: 'relative', overflow: 'hidden', height: '145px', borderRadius: '8px', border: '1.5px solid var(--color-black)', marginBottom: '10px' }}>
+                    {/* Clean photo */}
+                    <div className="place-card__image" style={{ position: 'relative', overflow: 'hidden', height: '160px', borderRadius: '10px', border: '1.5px solid var(--color-black)', marginBottom: '12px' }}>
                       <img 
                         src={getPlaceImage(place)} 
                         alt={place.name}
@@ -512,24 +575,53 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
                       />
                     </div>
 
-                    {/* Category tag moved onto white body ABOVE place name */}
-                    <div className={`category-tag category-tag--${place.category}`}>
-                      {CATEGORY_EMOJI[place.category]} {place.category}
+                    {/* Category tag + Verified badge row */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '4px' }}>
+                      <div className={`category-tag category-tag--${place.category}`} style={{ fontFamily: 'var(--font-secondary)' }}>
+                        {CATEGORY_EMOJI[place.category]} {place.category}
+                      </div>
+                      {place.actionStatus === 'verified' && (
+                        <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--state-success)', backgroundColor: 'var(--color-mint)', padding: '2px 8px', borderRadius: '999px', border: '1px solid var(--color-black)', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                          ✓ Verified
+                        </span>
+                      )}
                     </div>
 
-                    {/* Place Name in Serif Typography */}
-                    <div className="place-card__name">{place.name}</div>
+                    {/* Place Name in Heading Typography */}
+                    <div className="place-card__name" style={{ fontSize: '18px', fontWeight: 700, lineHeight: 1.25, color: 'var(--color-black)' }}>{place.name}</div>
                     
-                    {/* Rating + distance + city on one line in muted metadata */}
-                    <div className="place-card__meta">
-                      <span className="place-card__rating"><Star size={12} fill="var(--color-yellow)" stroke="var(--color-black)" /> {place.rating}</span>
+                    {/* Address snippet in Geist Thin / secondary typography */}
+                    {addressExcerpt && (
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontFamily: 'var(--font-secondary)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <MapPin size={12} style={{ flexShrink: 0 }} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{addressExcerpt}</span>
+                      </div>
+                    )}
+
+                    {/* Rating + distance + city in secondary typography */}
+                    <div className="place-card__meta" style={{ marginTop: '6px', fontFamily: 'var(--font-secondary)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span className="place-card__rating"><Star size={12} fill="var(--color-yellow)" stroke="var(--color-black)" /> {place.rating || 4.8}</span>
                       <span>•</span>
-                      <span className="place-card__distance"><MapPin size={12} /> {formatDistance(place.distance)}</span>
+                      <span className="place-card__distance">{formatDistance(place.distance)}</span>
                       {place.city && <><span>•</span><span>{place.city}</span></>}
                     </div>
 
+                    {/* Feature tags snippet in secondary typography */}
+                    {((place.tags && place.tags.length > 0) || (place.cuisine && place.cuisine.length > 0)) && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '8px' }}>
+                        {(place.tags || place.cuisine).slice(0, 2).map((t, idx) => (
+                          <span key={idx} style={{ fontSize: '11px', fontFamily: 'var(--font-secondary)', color: 'var(--text-secondary)', backgroundColor: 'var(--color-cream)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--border-muted)' }}>
+                            #{t}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Spacer pushing action row to bottom */}
+                    <div style={{ flex: 1, minHeight: '12px' }} />
+
                     {/* Action Row: ONE primary button (filled, primary accent) + ONE save icon button */}
-                    <div className="place-card__actions">
+                    <div className="place-card__actions" style={{ marginTop: '12px' }}>
                       <a
                         href={getActionableUrl(place)}
                         target="_blank"
@@ -582,8 +674,10 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
               </button>
             </div>
           )}
-        </div>
+        </>
       )}
+    </div>
+  )}
 
       {/* ─── View Toggle: sliding indicator ─── */}
       <div className="view-toggle">

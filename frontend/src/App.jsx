@@ -3,9 +3,12 @@ import { Map, Heart, MessageSquare, User } from 'lucide-react';
 import NearbyFeed from './screens/NearbyFeed.jsx';
 import SavedList from './screens/SavedList.jsx';
 import Chat from './screens/Chat.jsx';
-import GroupDetail from './screens/GroupDetail.jsx';
+"import GroupDetail from './screens/GroupDetail.jsx';"
 import PlaceDetail from './screens/PlaceDetail.jsx';
 import Profile from './screens/Profile.jsx';
+import MeetupDetail from './screens/MeetupDetail.jsx';
+import MovieDetail from './screens/MovieDetail.jsx';
+import CreateMeetup from './screens/CreateMeetup.jsx';
 import { initOfflineSync } from './lib/offlineSync.js';
 import { api } from './lib/api.js';
 import { cachePlaces, getPlacesCount } from './lib/db.js';
@@ -14,6 +17,9 @@ export default function App() {
   const [currentTab, setCurrentTab] = useState('nearby');
   const [activeGroupId, setActiveGroupId] = useState(null);
   const [activePlaceId, setActivePlaceId] = useState(null);
+  const [activeMeetupId, setActiveMeetupId] = useState(null);
+  const [activeMovieId, setActiveMovieId] = useState(null);
+  const [showCreateMeetup, setShowCreateMeetup] = useState(false);
   const [booting, setBooting] = useState(true);
 
   // App boot sequence
@@ -49,19 +55,80 @@ export default function App() {
 
   // Handle routing internally for this demo
   const renderScreen = () => {
+    if (showCreateMeetup) {
+      return (
+        <CreateMeetup 
+          onBack={() => setShowCreateMeetup(false)}
+          onCreateSuccess={(newMeetup) => {
+            setShowCreateMeetup(false);
+            setActiveMeetupId(newMeetup.id);
+          }}
+        />
+      );
+    }
+    if (activeMeetupId) {
+      return (
+        <MeetupDetail 
+          meetupId={activeMeetupId} 
+          onBack={() => setActiveMeetupId(null)} 
+          onNavigateToPlace={(id) => {
+            setActiveMeetupId(null);
+            setActivePlaceId(id);
+          }} 
+        />
+      );
+    }
+    if (activeMovieId) {
+      return (
+        <MovieDetail 
+          movieId={activeMovieId} 
+          onBack={() => setActiveMovieId(null)} 
+          onNavigateToPlace={(id) => {
+            setActiveMovieId(null);
+            setActivePlaceId(id);
+          }} 
+        />
+      );
+    }
     if (activePlaceId) {
-      return <PlaceDetail placeId={activePlaceId} onBack={() => setActivePlaceId(null)} onNavigateToPlace={setActivePlaceId} />;
+      return (
+        <PlaceDetail 
+          placeId={activePlaceId} 
+          onBack={() => setActivePlaceId(null)} 
+          onNavigateToPlace={setActivePlaceId} 
+          onNavigateToMeetup={setActiveMeetupId}
+          onNavigateToMovie={setActiveMovieId}
+        />
+      );
     }
     if (activeGroupId) {
       return <GroupDetail groupId={activeGroupId} onBack={() => setActiveGroupId(null)} />;
     }
 
     switch (currentTab) {
-      case 'nearby': return <NearbyFeed onNavigateToGroup={setActiveGroupId} onNavigateToPlace={setActivePlaceId} />;
+      case 'nearby': 
+        return (
+          <NearbyFeed 
+            onNavigateToGroup={setActiveGroupId} 
+            onNavigateToPlace={setActivePlaceId} 
+            onNavigateToMeetup={setActiveMeetupId}
+            onNavigateToMovie={setActiveMovieId}
+            onHostMeetup={() => setShowCreateMeetup(true)}
+          />
+        );
       case 'saved': return <SavedList onNavigateToPlace={setActivePlaceId} />;
       case 'chat': return <Chat onNavigateToPlace={setActivePlaceId} />;
       case 'profile': return <Profile />;
-      default: return <NearbyFeed onNavigateToGroup={setActiveGroupId} onNavigateToPlace={setActivePlaceId} /> ;
+      default: 
+        return (
+          <NearbyFeed 
+            onNavigateToGroup={setActiveGroupId} 
+            onNavigateToPlace={setActivePlaceId}
+            onNavigateToMeetup={setActiveMeetupId}
+            onNavigateToMovie={setActiveMovieId}
+            onHostMeetup={() => setShowCreateMeetup(true)}
+          />
+        );
     }
   };
 

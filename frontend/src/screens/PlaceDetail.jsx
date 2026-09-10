@@ -17,9 +17,10 @@ import { CATEGORY_EMOJI, formatDistance, haversineKm, getPlaceImage, getActionab
 import { useGeolocation } from '../hooks/useGeolocation.js';
 import { queueAction } from '../lib/offlineSync.js';
 import { FALLBACK_PLACES } from '../lib/fallbackData.js';
-import { getCachedPlaces } from '../lib/db.js';
+"import { getCachedPlaces } from '../lib/db.js';"
+import RelatedContent from '../components/RelatedContent.jsx';
 
-export default function PlaceDetail({ placeId, onBack, onNavigateToPlace }) {
+export default function PlaceDetail({ placeId, onBack, onNavigateToPlace, onNavigateToMeetup, onNavigateToMovie }) {
   const [place, setPlace] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isSaved, setIsSaved] = useState(false);
@@ -596,6 +597,13 @@ export default function PlaceDetail({ placeId, onBack, onNavigateToPlace }) {
           </div>
         </div>
       </div>
+
+"      {/* ─── 5.5 RELATED CONTENT (MEETUPS / MOVIES) ─── */}
+      <RelatedContent 
+        placeId={placeId} 
+        onNavigateToMeetup={onNavigateToMeetup} 
+        onNavigateToMovie={onNavigateToMovie} 
+      />
 
       {/* ─── 6. NEARBY PLACES (ITINERARY BUILDER: "SINCE YOU'RE HERE...") ─── */}
       <div style={{ marginBottom: '32px' }}>

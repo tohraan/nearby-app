@@ -66,8 +66,9 @@
   --state-info: var(--color-blue);
 
   /* ─── Typography ─── */
-  --font-sans: 'Minecraft', 'Inter', ui-sans-serif, system-ui, sans-serif;
-  --font-serif: 'Minecraft', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Minecraft', 'Geist', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-secondary: 'Geist', 'Inter', -apple-system, BlinkMacSystemFont, ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Minecraft', 'Geist', 'Inter', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'Minecraft', 'JetBrains Mono', ui-monospace, monospace;
   --font-display: 800;
   --font-heading: 750;
