@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nearby-app-v1';
+const CACHE_NAME = 'nearby-app-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -33,10 +33,14 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Bypass for dev server
+  // ── GUARD: only handle http/https requests ──
+  // chrome-extension://, data:, blob:, etc. will crash cache.put()
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
+
+  // Bypass for dev server websocket / HMR
   if (url.port === '5173' || url.port === '5174') return;
 
-  // API Requests: Network only (we handle offline caching in the app via IndexedDB)
+  // API Requests: Network only (offline caching handled in-app via IndexedDB)
   if (url.pathname.startsWith('/api') || url.port === '3001') {
     return; // Fall through to standard network fetch
   }
@@ -47,8 +51,12 @@ self.addEventListener('fetch', (event) => {
       if (cachedResponse) return cachedResponse;
 
       return fetch(event.request).then((networkResponse) => {
-        // Cache successful GET responses for assets
-        if (event.request.method === 'GET' && networkResponse.ok) {
+        // Only cache successful GET responses for http/https URLs
+        if (
+          event.request.method === 'GET' &&
+          networkResponse.ok &&
+          (url.protocol === 'http:' || url.protocol === 'https:')
+        ) {
           const responseClone = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseClone);
