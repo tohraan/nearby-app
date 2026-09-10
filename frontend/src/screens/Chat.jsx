@@ -11,7 +11,8 @@ import { useGeolocation } from '../hooks/useGeolocation.js';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 import { api } from '../lib/api.js';
 import { getCachedPlaceById } from '../lib/db.js';
-import { CATEGORY_EMOJI, getPlaceImage, getActionableUrl, getActionLabel, formatDistance } from '../lib/geo.js';
+import RelatedContent from '../components/RelatedContent.jsx';
+import VenueImage from '../components/VenueImage.jsx';
 import { FALLBACK_PLACES } from '../lib/fallbackData.js';
 
 const CHAT_STORAGE_KEY = 'nearby_chat_history';
@@ -374,15 +375,7 @@ export default function Chat({ onNavigateToPlace }) {
                         onClick={() => onNavigateToPlace?.(place.id)}
                       >
                         <div className="place-card__image" style={{ position: 'relative', overflow: 'hidden', height: '130px', borderRadius: '8px', border: '1.5px solid var(--color-black)', marginBottom: '8px' }}>
-                          <img
-                            src={getPlaceImage(place)}
-                            alt={place.name}
-                            onError={(e) => {
-                              e.currentTarget.onerror = null;
-                              e.currentTarget.src = 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800&auto=format&fit=crop&q=80';
-                            }}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                          />
+                          <VenueImage place={place} alt={place.name} showAttribution={false} />
                         </div>
 
                         <div className={`category-tag category-tag--${place.category}`}>

@@ -16,13 +16,13 @@ import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 import { CATEGORY_EMOJI, formatDistance, haversineKm, getPlaceImage, getActionableUrl, getActionLabel, FOOD_RESERVATION_CATEGORIES, TICKET_CATEGORIES } from '../lib/geo.js';
 import { useGeolocation } from '../hooks/useGeolocation.js';
 import { queueAction } from '../lib/offlineSync.js';
-import { FALLBACK_PLACES } from '../lib/fallbackData.js';
-"import { getCachedPlaces } from '../lib/db.js';"
 import RelatedContent from '../components/RelatedContent.jsx';
+import VenueImage from '../components/VenueImage.jsx';
 
 export default function PlaceDetail({ placeId, onBack, onNavigateToPlace, onNavigateToMeetup, onNavigateToMovie }) {
   const [place, setPlace] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
   const [isSaved, setIsSaved] = useState(false);
   const [isVisited, setIsVisited] = useState(false);
   const [visitedCount, setVisitedCount] = useState(1);
@@ -187,65 +187,91 @@ export default function PlaceDetail({ placeId, onBack, onNavigateToPlace, onNavi
           marginBottom: '28px'
         }}
       >
-        {/* Hero Image Container */}
-        <div
-          style={{
-            position: 'relative',
-            borderRadius: '16px',
-            border: '3px solid var(--color-black)',
-            boxShadow: '6px 6px 0 var(--color-black)',
-            overflow: 'hidden',
-            minHeight: '280px',
-            backgroundColor: 'var(--color-cream)'
-          }}
-        >
-          <img
-            src={getPlaceImage(place)}
-            alt={place.name}
-            onError={(e) => {
-              e.currentTarget.onerror = null;
-              e.currentTarget.src = 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800&auto=format&fit=crop&q=80';
-            }}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-          />
-
-          {/* Category Overlay Tag */}
+        {/* Hero Image Container & Multi-Photo Gallery */}
+        <div>
           <div
             style={{
-              position: 'absolute',
-              top: '14px',
-              left: '14px',
-              backgroundColor: 'var(--color-yellow)',
-              border: '2px solid var(--color-black)',
-              borderRadius: '8px',
-              padding: '4px 12px',
-              fontSize: '11px',
-              fontWeight: 900,
-              boxShadow: '2.5px 2.5px 0 var(--color-black)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.04em'
+              position: 'relative',
+              borderRadius: '16px',
+              border: '3px solid var(--color-black)',
+              boxShadow: '6px 6px 0 var(--color-black)',
+              overflow: 'hidden',
+              height: '320px',
+              backgroundColor: 'var(--color-cream)'
             }}
           >
-            {CATEGORY_EMOJI[place.category]} {place.category}
+            <VenueImage 
+              place={Array.isArray(place.photos) && place.photos[selectedPhotoIndex] ? { ...place, image: place.photos[selectedPhotoIndex] } : place} 
+              alt={place.name} 
+              showAttribution={true}
+            />
+
+            {/* Category Overlay Tag */}
+            <div
+              style={{
+                position: 'absolute',
+                top: '14px',
+                left: '14px',
+                backgroundColor: 'var(--color-yellow)',
+                border: '2px solid var(--color-black)',
+                borderRadius: '8px',
+                padding: '4px 12px',
+                fontSize: '11px',
+                fontWeight: 900,
+                boxShadow: '2.5px 2.5px 0 var(--color-black)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+                zIndex: 4
+              }}
+            >
+              {CATEGORY_EMOJI[place.category]} {place.category}
+            </div>
+
+            {/* Fresh Day / City Overlay Tag */}
+            <div
+              style={{
+                position: 'absolute',
+                bottom: '14px',
+                left: '14px',
+                backgroundColor: 'var(--color-paper)',
+                border: '2px solid var(--color-black)',
+                borderRadius: '8px',
+                padding: '4px 10px',
+                fontSize: '11px',
+                fontWeight: 900,
+                boxShadow: '2px 2px 0 var(--color-black)',
+                zIndex: 4
+              }}
+            >
+              📍 {place.city || 'Dubai'}
+            </div>
           </div>
 
-          {/* Fresh Day / City Overlay Tag */}
-          <div
-            style={{
-              position: 'absolute',
-              bottom: '14px',
-              left: '14px',
-              backgroundColor: 'var(--color-paper)',
-              border: '2px solid var(--color-black)',
-              borderRadius: '8px',
-              padding: '4px 10px',
-              fontSize: '11px',
-              fontWeight: 800,
-              boxShadow: '2.5px 2.5px 0 var(--color-black)'
-            }}
-          >
-            📍 {place.city || 'Dubai'} • Fresh Day Spot
-          </div>
+          {/* Multi-Photo Thumbnail Strip */}
+          {Array.isArray(place.photos) && place.photos.length > 1 && (
+            <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+              {place.photos.map((photoUrl, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setSelectedPhotoIndex(idx)}
+                  style={{
+                    width: '60px',
+                    height: '60px',
+                    borderRadius: '8px',
+                    border: selectedPhotoIndex === idx ? '2.5px solid var(--color-black)' : '1.5px solid var(--border-default)',
+                    boxShadow: selectedPhotoIndex === idx ? '2.5px 2.5px 0 var(--color-black)' : 'none',
+                    overflow: 'hidden',
+                    padding: 0,
+                    cursor: 'pointer',
+                    opacity: selectedPhotoIndex === idx ? 1 : 0.65,
+                    transition: 'all 120ms ease-out'
+                  }}
+                >
+                  <img src={photoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Hero Information & Decision Context */}

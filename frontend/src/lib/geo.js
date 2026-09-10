@@ -214,9 +214,28 @@ const CATEGORY_IMAGES = {
   ],
 };
 
+export function hasRealImage(place) {
+  if (place?.image && typeof place.image === 'string' && place.image.startsWith('http')) {
+    return true;
+  }
+  if (Array.isArray(place?.photos) && place.photos.length > 0) {
+    return true;
+  }
+  const nameLower = String(place?.name || place?.id || '').toLowerCase();
+  for (const key of Object.keys(VENUE_REAL_IMAGES)) {
+    if (nameLower.includes(key)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export function getPlaceImage(place) {
   if (place?.image && typeof place.image === 'string' && place.image.startsWith('http')) {
     return place.image;
+  }
+  if (Array.isArray(place?.photos) && place.photos.length > 0 && place.photos[0]) {
+    return place.photos[0];
   }
 
   const nameLower = String(place?.name || place?.id || '').toLowerCase();
@@ -226,16 +245,8 @@ export function getPlaceImage(place) {
     }
   }
 
-  const category = place?.category || 'outdoor';
-  const list = CATEGORY_IMAGES[category] || CATEGORY_IMAGES.outdoor;
-  const key = String(place?.id || place?.name || '0');
-  let hash = 0;
-  for (let i = 0; i < key.length; i++) {
-    hash = (hash << 5) - hash + key.charCodeAt(i);
-    hash |= 0;
-  }
-  const index = Math.abs(hash) % list.length;
-  return list[index];
+  // Return null when no real venue photo exists — signals VenueImage component to render honest vertical-tint placeholder
+  return null;
 }
 
 /**

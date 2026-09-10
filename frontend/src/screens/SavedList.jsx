@@ -117,11 +117,7 @@ export default function SavedList({ onNavigateToPlace }) {
                 overflow: 'hidden',
                 position: 'relative'
               }}>
-                <img 
-                  src={getPlaceImage(place)} 
-                  alt={place.name} 
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
-                />
+                <VenueImage place={place} alt={place.name} showAttribution={false} />
               </div>
 
               <div style={{ flex: 1, minWidth: 0 }}>

@@ -12,6 +12,11 @@ export const FALLBACK_PLACES = [
     currency: "AED",
     priceUnit: "per person",
     image: "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800&auto=format&fit=crop&q=80",
+    photos: [
+      "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1580674684081-7617fbf3d745?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1518684079-3c830dcef090?w=800&auto=format&fit=crop&q=80"
+    ],
     website: "https://www.burjkhalifa.ae/",
     actionLabel: "Book Viewing Deck Tickets",
     actionUrl: "https://www.burjkhalifa.ae/en/index.aspx",

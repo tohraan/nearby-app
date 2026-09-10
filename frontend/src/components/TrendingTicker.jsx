@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Star, MapPin, ChevronRight, ExternalLink } from 'lucide-react';
 import { FALLBACK_PLACES } from '../lib/fallbackData.js';
-import { getPlaceImage, getActionLabel } from '../lib/geo.js';
+import VenueImage from './VenueImage.jsx';
 
 const CATEGORY_COLORS = {
   attraction: '#FCF3CF',
@@ -56,7 +56,6 @@ export default function TrendingTicker({ onNavigateToPlace }) {
       >
         {items.map((item) => {
           const place = FALLBACK_PLACES.find(p => p.id === item.id) || item;
-          const bgImg = getPlaceImage(place);
           const catBg = CATEGORY_COLORS[item.category] || '#F2F2EF';
           const ctaLabel = getActionLabel(place);
 
@@ -78,17 +77,8 @@ export default function TrendingTicker({ onNavigateToPlace }) {
                 transition: 'transform 0.2s ease, boxShadow 0.2s ease'
               }}
             >
-              {/* Background Photo */}
-              <img
-                src={bgImg}
-                alt={item.name}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  display: 'block'
-                }}
-              />
+              {/* Background Photo / Honest Fallback */}
+              <VenueImage place={place} alt={item.name} showAttribution={false} />
 
               {/* Gradient Vignette Overlay */}
               <div
