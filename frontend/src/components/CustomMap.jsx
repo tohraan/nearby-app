@@ -31,19 +31,21 @@ export default function CustomMap({
   const initialLat = userLat || 25.1972;
   const initialLng = userLng || 55.2744;
 
-  // Category color palette — solid fills matching list-view tags
+  // Category color palette — shared vertical tints
   const CATEGORY_PIN_COLORS = {
-    cafe:          { fill: '#C8A882', text: '#FFFFFF' },
-    food:          { fill: '#E8773A', text: '#FFFFFF' },
-    nightlife:     { fill: '#8E44AD', text: '#FFFFFF' },
-    attraction:    { fill: '#F4C542', text: '#1C1A17' },
-    culture:       { fill: '#9B59B6', text: '#FFFFFF' },
-    outdoor:       { fill: '#27AE60', text: '#FFFFFF' },
-    sports:        { fill: '#2980B9', text: '#FFFFFF' },
-    entertainment: { fill: '#E74C3C', text: '#FFFFFF' },
-    shopping:      { fill: '#E91E63', text: '#FFFFFF' },
-    community:     { fill: '#16A085', text: '#FFFFFF' },
-    other:         { fill: '#7F8C8D', text: '#FFFFFF' },
+    cafe:          { fill: '#FDEBD0', text: '#8A5300' },
+    food:          { fill: '#FDEBD0', text: '#8A5300' },
+    nightlife:     { fill: '#FDEBD0', text: '#8A5300' },
+    attraction:    { fill: '#D5F5E3', text: '#1B6635' },
+    culture:       { fill: '#D5F5E3', text: '#1B6635' },
+    outdoor:       { fill: '#D5F5E3', text: '#1B6635' },
+    shopping:      { fill: '#D5F5E3', text: '#1B6635' },
+    entertainment: { fill: '#D5F5E3', text: '#1B6635' },
+    sports:        { fill: '#FADBD8', text: '#A63A16' },
+    meetups:       { fill: '#FADBD8', text: '#A63A16' },
+    movies:        { fill: '#D6EAF8', text: '#1D4ED8' },
+    outing:        { fill: '#EBDEF0', text: '#6B21A8' },
+    other:         { fill: '#E5E7EB', text: '#1F2937' },
   };
 
   // Build a solid teardrop/circle pin HTML for a single place

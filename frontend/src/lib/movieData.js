@@ -2,6 +2,12 @@
  * movieData.js — Static seed data for Movies Nearby
  */
 
+export const FORMAT_PRICES = {
+  Standard: 45,
+  IMAX: 65,
+  VIP: 120,
+};
+
 export const CINEMAS = [
   {
     id: 'cinema_reel_dubai_mall',

@@ -517,6 +517,12 @@ export default function PlaceDetail({ placeId, onBack, onNavigateToPlace, onNavi
                 </div>
               </div>
 
+              {place.price && (
+                <div style={{ fontSize: '15px', fontWeight: 650, color: 'var(--text-secondary)', textAlign: 'right', marginBottom: '2px', fontFamily: 'var(--font-secondary)' }}>
+                  {place.currency || 'AED'} {place.price} {place.priceUnit ? `${place.priceUnit}` : 'per person'}
+                </div>
+              )}
+
               <a
                 href={getActionableUrl(place)}
                 target="_blank"

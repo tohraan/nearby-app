@@ -638,6 +638,139 @@
   box-shadow: var(--shadow-xs);
 }
 
+/* ─── 2-Tier Vertical Category Navigation ─── */
+.vertical-tiles-grid {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scrollbar-width: none;
+}
+.vertical-tiles-grid::-webkit-scrollbar {
+  display: none;
+}
+
+.vertical-tile {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--border-default);
+  background-color: var(--color-white);
+  font-family: var(--font-secondary);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--color-black);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 150ms ease-out, border-color 150ms ease-out, box-shadow 150ms ease-out, transform 80ms ease;
+  box-shadow: 2px 2px 0 var(--color-black);
+}
+
+.vertical-tile:hover {
+  transform: translateY(-1px);
+}
+
+.vertical-tile--all.vertical-tile--active {
+  background-color: var(--color-black);
+  color: var(--color-white);
+  border-color: var(--color-black);
+}
+
+.vertical-tile--eat_drink.vertical-tile--active {
+  background-color: var(--tint-eat-bg);
+  border-color: var(--tint-eat-border);
+  color: var(--tint-eat-text);
+}
+
+.vertical-tile--attractions.vertical-tile--active {
+  background-color: var(--tint-attractions-bg);
+  border-color: var(--tint-attractions-border);
+  color: var(--tint-attractions-text);
+}
+
+.vertical-tile--sports_meetups.vertical-tile--active {
+  background-color: var(--tint-sports-bg);
+  border-color: var(--tint-sports-border);
+  color: var(--tint-sports-text);
+}
+
+.vertical-tile--movies.vertical-tile--active {
+  background-color: var(--tint-movies-bg);
+  border-color: var(--tint-movies-border);
+  color: var(--tint-movies-text);
+}
+
+.vertical-tile--outings.vertical-tile--active {
+  background-color: var(--tint-outings-bg);
+  border-color: var(--tint-outings-border);
+  color: var(--tint-outings-text);
+}
+
+/* Progressive Disclosure Subcategory Row */
+.subcategory-row {
+  margin-top: 10px;
+  padding: 6px 0;
+  animation: subcategorySlideDown 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.subcategory-row--crossfade {
+  animation: subcategoryCrossfade 150ms ease-out forwards;
+}
+
+@keyframes subcategorySlideDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes subcategoryCrossfade {
+  from { opacity: 0.4; }
+  to { opacity: 1; }
+}
+
+/* Category Tags on Cards with Shared Vertical Tints */
+.category-tag--eat_drink,
+.category-tag--food,
+.category-tag--cafe,
+.category-tag--nightlife {
+  background-color: var(--tint-eat-bg) !important;
+  border-color: var(--tint-eat-border) !important;
+  color: var(--tint-eat-text) !important;
+}
+
+.category-tag--attractions,
+.category-tag--attraction,
+.category-tag--culture,
+.category-tag--outdoor,
+.category-tag--shopping,
+.category-tag--entertainment {
+  background-color: var(--tint-attractions-bg) !important;
+  border-color: var(--tint-attractions-border) !important;
+  color: var(--tint-attractions-text) !important;
+}
+
+.category-tag--sports_meetups,
+.category-tag--meetups,
+.category-tag--sports {
+  background-color: var(--tint-sports-bg) !important;
+  border-color: var(--tint-sports-border) !important;
+  color: var(--tint-sports-text) !important;
+}
+
+.category-tag--movies {
+  background-color: var(--tint-movies-bg) !important;
+  border-color: var(--tint-movies-border) !important;
+  color: var(--tint-movies-text) !important;
+}
+
+.category-tag--outings,
+.category-tag--outing {
+  background-color: var(--tint-outings-bg) !important;
+  border-color: var(--tint-outings-border) !important;
+  color: var(--tint-outings-text) !important;
+}
+
 /* ─── Discovery Grid ─── */
 .discovery-grid {
   display: grid;

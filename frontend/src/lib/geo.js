@@ -88,6 +88,43 @@ export const FOOD_RESERVATION_CATEGORIES = new Set(['food', 'cafe', 'nightlife']
 export const TICKET_CATEGORIES = new Set(['attraction', 'culture', 'entertainment']);
 export const DIRECTIONS_CATEGORIES = new Set(['outdoor', 'sports', 'beach', 'landmark', 'community']);
 
+// ─── Top-Level Vertical "Worlds" ───
+export const TOP_LEVEL_VERTICALS = [
+  { key: 'all', label: 'All Spots', icon: '✨', subCategories: ['all'] },
+  { key: 'eat_drink', label: 'Eat & Drink', icon: '🍽️', subCategories: ['food', 'cafe', 'nightlife'] },
+  { key: 'attractions', label: 'Attractions', icon: '🎟️', subCategories: ['attraction', 'culture', 'outdoor', 'shopping', 'entertainment'] },
+  { key: 'sports_meetups', label: 'Sports & Meetups', icon: '🏐', subCategories: ['meetups', 'sports'] },
+  { key: 'movies', label: 'Movies', icon: '🎬', subCategories: ['movies'] },
+  { key: 'outings', label: 'Outings', icon: '🌆', subCategories: ['outdoor', 'entertainment'] },
+];
+
+export function getVerticalForCategory(cat) {
+  if (cat === 'meetups') return 'sports_meetups';
+  if (cat === 'movies') return 'movies';
+  if (['food', 'cafe', 'nightlife'].includes(cat)) return 'eat_drink';
+  if (['attraction', 'culture', 'outdoor', 'shopping', 'entertainment'].includes(cat)) return 'attractions';
+  return 'attractions';
+}
+
+export function formatPriceDisplay(place) {
+  if (!place || place.isFree) return null;
+  if (place.category === 'meetups') return null; // Meetups are strictly free/social
+  if (['food', 'cafe', 'nightlife'].includes(place.category)) return null; // Dining uses priceRange signal ($$)
+  if (place.price !== undefined && place.price !== null) {
+    const currency = place.currency || 'AED';
+    return `${currency} ${place.price}`;
+  }
+  return null;
+}
+
+export function getPriceRangeSignal(place) {
+  if (!place) return '';
+  if (['food', 'cafe', 'nightlife', 'shopping'].includes(place.category) && place.priceRange) {
+    return ` · ${place.priceRange}`;
+  }
+  return '';
+}
+
 // Real venue photography matching specific venue names & landmarks
 const VENUE_REAL_IMAGES = {
   'burj khalifa': 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800&auto=format&fit=crop&q=80',

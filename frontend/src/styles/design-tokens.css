@@ -65,6 +65,27 @@
   --state-error: var(--color-red);
   --state-info: var(--color-blue);
 
+  /* ─── Shared Vertical Tints (Identity Washes) ─── */
+  --tint-eat-bg: hsl(38, 90%, 94%);
+  --tint-eat-border: hsl(38, 70%, 75%);
+  --tint-eat-text: #8A5300;
+
+  --tint-attractions-bg: hsl(145, 60%, 93%);
+  --tint-attractions-border: hsl(145, 50%, 75%);
+  --tint-attractions-text: #1B6635;
+
+  --tint-sports-bg: hsl(14, 90%, 94%);
+  --tint-sports-border: hsl(14, 75%, 78%);
+  --tint-sports-text: #A63A16;
+
+  --tint-movies-bg: hsl(212, 70%, 93%);
+  --tint-movies-border: hsl(212, 60%, 76%);
+  --tint-movies-text: #1D4ED8;
+
+  --tint-outings-bg: hsl(280, 50%, 93%);
+  --tint-outings-border: hsl(280, 40%, 78%);
+  --tint-outings-text: #6B21A8;
+
   /* ─── Typography ─── */
   --font-sans: 'Minecraft', 'Geist', 'Inter', ui-sans-serif, system-ui, sans-serif;
   --font-secondary: 'Geist', 'Inter', -apple-system, BlinkMacSystemFont, ui-sans-serif, system-ui, sans-serif;

@@ -3,7 +3,7 @@ import { Search, MapPin, List, Map as MapIcon, Star, Bell, ExternalLink, Sliders
 import { useGeolocation } from '../hooks/useGeolocation.js';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 import { getCachedPlaces, getSavedPlaceIds, savePlaceLocally, unsavePlaceLocally, getVisitedPlaceIds } from '../lib/db.js';
-import { sortByDistance, formatDistance, CATEGORY_EMOJI, CATEGORY_LABELS, getPlaceImage, getActionableUrl, getActionLabel } from '../lib/geo.js';
+import { sortByDistance, formatDistance, CATEGORY_EMOJI, CATEGORY_LABELS, getPlaceImage, getActionableUrl, getActionLabel, TOP_LEVEL_VERTICALS, getVerticalForCategory, formatPriceDisplay, getPriceRangeSignal } from '../lib/geo.js';
 
 import { FALLBACK_PLACES } from '../lib/fallbackData.js';
 import { FALLBACK_MEETUPS } from '../lib/meetupData.js';
@@ -37,6 +37,7 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace, onNav
   const [visitedIds, setVisitedIds] = useState(new Set());
   
   // Filters & State
+  const [activeVertical, setActiveVertical] = useState('all');
   const [category, setCategory] = useState('all');
   const [search, setSearch] = useState('');
   const [selectedCity, setSelectedCity] = useState('all');
@@ -288,20 +289,50 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace, onNav
           </button>
         </div>
 
-        {/* Band c: Category filter chips as ONE horizontally scrollable pill row */}
-        <div className="category-chips-wrapper" style={{ marginTop: '12px', borderBottom: 'none', paddingBottom: 0 }}>
-          <div className="category-chips" style={{ padding: '4px 0' }}>
-            {CATEGORIES.map(cat => (
-              <button
-                key={cat}
-                className={`category-chip ${category === cat ? 'category-chip--active' : ''}`}
-                onClick={() => setCategory(cat)}
-                style={category === cat ? { backgroundColor: 'var(--color-black)', color: 'var(--color-white)', borderColor: 'var(--color-black)' } : { backgroundColor: 'var(--color-white)' }}
-              >
-                {cat !== 'all' && CATEGORY_EMOJI[cat]} {cat === 'all' ? 'All' : CATEGORY_LABELS[cat]}
-              </button>
-            ))}
+        {/* Band c: 2-Tier Vertical Category Navigation */}
+        <div style={{ marginTop: '14px' }}>
+          {/* Tier 1: Top-Level Verticals */}
+          <div className="vertical-tiles-grid">
+            {TOP_LEVEL_VERTICALS.map(v => {
+              const isActive = activeVertical === v.key;
+              return (
+                <button
+                  key={v.key}
+                  className={`vertical-tile vertical-tile--${v.key} ${isActive ? 'vertical-tile--active' : ''}`}
+                  onClick={() => {
+                    setActiveVertical(v.key);
+                    if (v.key === 'all') setCategory('all');
+                    else if (v.key === 'sports_meetups') setCategory('meetups');
+                    else if (v.key === 'movies') setCategory('movies');
+                    else if (v.subCategories && v.subCategories.length > 0) {
+                      setCategory(v.subCategories[0]);
+                    }
+                  }}
+                >
+                  <span>{v.icon}</span>
+                  <span>{v.label}</span>
+                </button>
+              );
+            })}
           </div>
+
+          {/* Tier 2: Progressive Disclosure Sub-Categories (Only when top-level vertical selected) */}
+          {activeVertical !== 'all' && activeVertical !== 'sports_meetups' && activeVertical !== 'movies' && (
+            <div className="subcategory-row">
+              <div className="category-chips" style={{ padding: '4px 0' }}>
+                {TOP_LEVEL_VERTICALS.find(v => v.key === activeVertical)?.subCategories.map(cat => (
+                  <button
+                    key={cat}
+                    className={`category-chip ${category === cat ? 'category-chip--active' : ''}`}
+                    onClick={() => setCategory(cat)}
+                    style={category === cat ? { backgroundColor: 'var(--color-black)', color: 'var(--color-white)', borderColor: 'var(--color-black)' } : { backgroundColor: 'var(--color-white)' }}
+                  >
+                    {cat !== 'all' && CATEGORY_EMOJI[cat]} {cat === 'all' ? 'All' : CATEGORY_LABELS[cat]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -578,7 +609,7 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace, onNav
                     {/* Category tag + Verified badge row */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '4px' }}>
                       <div className={`category-tag category-tag--${place.category}`} style={{ fontFamily: 'var(--font-secondary)' }}>
-                        {CATEGORY_EMOJI[place.category]} {place.category}
+                        {CATEGORY_EMOJI[place.category]} {place.category}{getPriceRangeSignal(place)}
                       </div>
                       {place.actionStatus === 'verified' && (
                         <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--state-success)', backgroundColor: 'var(--color-mint)', padding: '2px 8px', borderRadius: '999px', border: '1px solid var(--color-black)', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
@@ -598,12 +629,18 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace, onNav
                       </div>
                     )}
 
-                    {/* Rating + distance + city in secondary typography */}
+                    {/* Rating + distance + city + muted price in secondary typography */}
                     <div className="place-card__meta" style={{ marginTop: '6px', fontFamily: 'var(--font-secondary)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <span className="place-card__rating"><Star size={12} fill="var(--color-yellow)" stroke="var(--color-black)" /> {place.rating || 4.8}</span>
                       <span>•</span>
                       <span className="place-card__distance">{formatDistance(place.distance)}</span>
                       {place.city && <><span>•</span><span>{place.city}</span></>}
+                      {formatPriceDisplay(place) && (
+                        <>
+                          <span>•</span>
+                          <span style={{ color: 'var(--text-secondary)', fontWeight: 550 }}>{formatPriceDisplay(place)}</span>
+                        </>
+                      )}
                     </div>
 
                     {/* Feature tags snippet in secondary typography */}

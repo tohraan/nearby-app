@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Star, Film, Ticket, ExternalLink, MapPin } from 'lucide-react';
-import { FALLBACK_MOVIES, CINEMAS } from '../lib/movieData.js';
+import { CINEMAS, FALLBACK_MOVIES, FORMAT_PRICES } from '../lib/movieData.js';
 
 export default function MovieDetail({ movieId, onBack, onNavigateToPlace }) {
   const movie = FALLBACK_MOVIES.find(m => m.id === movieId) || FALLBACK_MOVIES[0];
@@ -125,10 +125,11 @@ export default function MovieDetail({ movieId, onBack, onNavigateToPlace }) {
                     </span>
                   </div>
 
-                  {/* Time Chips */}
+                  {/* Time Chips with Stacked Format Prices */}
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '10px' }}>
                     {(st.times || []).map((t, tIdx) => {
                       const timeStr = new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                      const formatPrice = FORMAT_PRICES[st.format || 'Standard'] || 45;
                       return (
                         <a
                           key={tIdx}
@@ -136,9 +137,14 @@ export default function MovieDetail({ movieId, onBack, onNavigateToPlace }) {
                           target="_blank"
                           rel="noopener noreferrer"
                           className="neo-btn neo-btn--xs neo-btn--secondary"
-                          style={{ textDecoration: 'none', fontWeight: 700, fontSize: '13px' }}
+                          style={{ textDecoration: 'none', fontWeight: 700, fontSize: '12px', display: 'inline-flex', flexDirection: 'column', alignItems: 'center', padding: '5px 10px', gap: '1px' }}
                         >
-                          <Ticket size={12} /> {timeStr}
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <Ticket size={12} /> {timeStr}
+                          </span>
+                          <span style={{ fontSize: '10px', opacity: 0.75, fontWeight: 550, fontFamily: 'var(--font-secondary)' }}>
+                            AED {formatPrice}
+                          </span>
                         </a>
                       );
                     })}
