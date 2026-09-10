@@ -742,7 +742,6 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace, onNav
                 onVisiblePlacesChange={(places) => setVisibleMapPlaces(places)}
               />
             </div>
-            </div>
             
             <div className={`split-view-panel ${selectedPlaceId ? 'split-view-panel--expanded' : 'split-view-panel--default'}`} style={{ overflowY: selectedPlaceId ? 'auto' : 'visible' }}>
               {selectedPlaceId ? (
