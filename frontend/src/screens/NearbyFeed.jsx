@@ -54,6 +54,8 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
   const [notificationStatus, setNotificationStatus] = useState(
     typeof Notification !== 'undefined' ? Notification.permission : 'default'
   );
+  // Track which place IDs just triggered a save animation (cleared after 400ms)
+  const [justSavedIds, setJustSavedIds] = useState(new Set());
 
   // Load cached places & user saves
   useEffect(() => {
@@ -165,6 +167,9 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
       }
     } else {
       newSaved.add(placeId);
+      // Trigger the pop + particle animation
+      setJustSavedIds(prev => new Set([...prev, placeId]));
+      setTimeout(() => setJustSavedIds(prev => { const n = new Set(prev); n.delete(placeId); return n; }), 450);
       await savePlaceLocally(placeId);
       if (isOnline) {
         try { await api.savePlace(placeId); } catch { queueAction({ type: 'save', placeId }); }
@@ -536,12 +541,27 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
                         {ctaLabel} <ExternalLink size={12} />
                       </a>
                       <button
-                        className={`place-card__save-btn ${isSaved ? 'place-card__save-btn--saved' : ''}`}
+                        className={[
+                          'place-card__save-btn',
+                          isSaved ? 'place-card__save-btn--saved' : '',
+                          justSavedIds.has(place.id) ? 'place-card__save-btn--just-saved' : '',
+                        ].join(' ')}
                         onClick={(e) => { e.stopPropagation(); handleToggleSave(place.id); }}
                         title={isSaved ? 'Unsave place' : 'Save place'}
                         aria-label="Save place"
                       >
-                        <Heart size={18} fill={isSaved ? 'var(--color-black)' : 'none'} color="var(--color-black)" />
+                        {/* Particle burst — only renders during the 450ms save animation window */}
+                        {justSavedIds.has(place.id) && (
+                          <span className="save-particles" aria-hidden="true">
+                            {[1,2,3,4,5,6].map(i => <span key={i} className="save-particle" />)}
+                          </span>
+                        )}
+                        <Heart
+                          className="save-heart-icon"
+                          size={18}
+                          fill={isSaved ? '#FFFFFF' : 'none'}
+                          color={isSaved ? '#FFFFFF' : 'var(--color-black)'}
+                        />
                       </button>
                     </div>
                   </div>
@@ -565,13 +585,14 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
         </div>
       )}
 
-      {/* ─── Neutral Active State View Toggle (List vs Map) ─── */}
+      {/* ─── View Toggle: sliding indicator ─── */}
       <div className="view-toggle">
+        {/* The sliding black pill indicator */}
+        <span className={`view-toggle__indicator view-toggle__indicator--${view}`} aria-hidden="true" />
         <button
           className={`view-toggle__btn ${view === 'list' ? 'view-toggle__btn--active' : ''}`}
           onClick={() => setView('list')}
           aria-label="List view"
-          style={view === 'list' ? { backgroundColor: 'var(--color-black)', color: 'var(--color-white)' } : { backgroundColor: 'var(--color-white)', color: 'var(--color-black)' }}
         >
           <List size={16} /> List View
         </button>
@@ -579,7 +600,6 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace }) {
           className={`view-toggle__btn ${view === 'map' ? 'view-toggle__btn--active' : ''}`}
           onClick={() => setView('map')}
           aria-label="Map view"
-          style={view === 'map' ? { backgroundColor: 'var(--color-black)', color: 'var(--color-white)' } : { backgroundColor: 'var(--color-white)', color: 'var(--color-black)' }}
         >
           <MapIcon size={16} /> Map View
         </button>

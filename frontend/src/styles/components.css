@@ -30,8 +30,9 @@
 }
 
 .neo-btn:active {
-  transform: translate(4px, 4px);
+  transform: translate(2px, 2px) scale(0.97);
   box-shadow: 0 0 0 var(--color-black);
+  transition: transform 80ms ease-in, box-shadow 80ms ease-in;
 }
 
 .neo-btn:disabled {
@@ -411,6 +412,7 @@
   gap: 8px;
 }
 
+/* ─── Save / Heart Button ─── */
 .place-card__save-btn {
   display: flex;
   align-items: center;
@@ -421,9 +423,14 @@
   border-radius: 8px;
   background: var(--bg-surface);
   box-shadow: var(--shadow-xs);
-  transition: transform 180ms var(--ease-standard), background-color 180ms var(--ease-standard);
   cursor: pointer;
   flex-shrink: 0;
+  position: relative;
+  /* transition for the un-save direction (quiet, 150ms) */
+  transition:
+    background-color 150ms ease-in,
+    box-shadow 120ms ease-out,
+    transform 120ms ease-out;
 }
 
 .place-card__save-btn:hover {
@@ -431,16 +438,60 @@
   box-shadow: 1px 1px 0 var(--color-black);
 }
 
+/* Saved state: terracotta fill */
 .place-card__save-btn--saved {
-  background: var(--color-yellow);
-  color: var(--color-black);
-  animation: heartPop 180ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  background: #E8603C;
+  color: var(--color-white);
+  border-color: #C0472A;
+  box-shadow: 2px 2px 0 #C0472A;
 }
 
-@keyframes heartPop {
-  0% { transform: scale(0.85); }
-  60% { transform: scale(1.18); }
-  100% { transform: scale(1); }
+/* The icon itself gets the pop animation on save */
+.place-card__save-btn--just-saved .save-heart-icon {
+  animation: heartSavePop 280ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Un-save: no pop, just quiet fill reverse (handled by transition above) */
+.place-card__save-btn--just-unsaved .save-heart-icon {
+  animation: none;
+}
+
+@keyframes heartSavePop {
+  0%   { transform: scale(1);   }
+  45%  { transform: scale(1.3); }
+  100% { transform: scale(1);   }
+}
+
+/* Particle burst container */
+.save-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.save-particle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  opacity: 0;
+  animation: particleBurst 400ms ease-out forwards;
+}
+
+.save-particle:nth-child(1) { background: #E8603C; --angle: 0deg;   --dist: 18px; }
+.save-particle:nth-child(2) { background: #F7E84F; --angle: 60deg;  --dist: 16px; }
+.save-particle:nth-child(3) { background: #FF8FC4; --angle: 120deg; --dist: 20px; }
+.save-particle:nth-child(4) { background: #E8603C; --angle: 180deg; --dist: 16px; }
+.save-particle:nth-child(5) { background: #F7E84F; --angle: 240deg; --dist: 18px; }
+.save-particle:nth-child(6) { background: #AEE8C5; --angle: 300deg; --dist: 17px; }
+
+@keyframes particleBurst {
+  0%   { transform: translate(-50%,-50%) rotate(var(--angle)) translateX(0)   scale(1);   opacity: 1; }
+  80%  { transform: translate(-50%,-50%) rotate(var(--angle)) translateX(var(--dist)) scale(0.8); opacity: 0.9; }
+  100% { transform: translate(-50%,-50%) rotate(var(--angle)) translateX(var(--dist)) scale(0);   opacity: 0; }
 }
 
 .category-tag {
@@ -554,6 +605,7 @@
   display: none;
 }
 
+/* Category chip — 150ms bg+text crossfade, crisp not bouncy */
 .category-chip {
   display: flex;
   align-items: center;
@@ -568,17 +620,21 @@
   background: var(--bg-surface);
   cursor: pointer;
   white-space: nowrap;
-  transition: all var(--duration-fast) var(--ease-standard);
   box-shadow: var(--shadow-xs);
+  /* Crossfade bg + text together at 150ms — no scale/bounce */
+  transition:
+    background-color 150ms ease-out,
+    color 150ms ease-out,
+    border-color 150ms ease-out,
+    box-shadow 80ms ease-out;
 }
 
-.category-chip:hover {
-  transform: translate(1px, 1px);
-  box-shadow: 1px 1px 0 var(--color-black);
+.category-chip:active {
+  transform: scale(0.97);
+  transition: transform 80ms ease-in;
 }
 
 .category-chip--active {
-  background: var(--color-yellow);
   box-shadow: var(--shadow-xs);
 }
 
@@ -1177,7 +1233,7 @@
   text-underline-offset: 3px;
 }
 
-/* ─── View toggle (Floating FAB) ─── */
+/* View toggle — sliding indicator pill that moves horizontally */
 .view-toggle {
   position: fixed;
   bottom: calc(76px + env(safe-area-inset-bottom, 0px));
@@ -1191,20 +1247,44 @@
   box-shadow: 4px 4px 0 var(--color-black);
   overflow: hidden;
   animation: slideInUp var(--duration-slow) var(--ease-standard);
+  /* Contain the sliding indicator */
+  position: fixed;
+  isolation: isolate;
 }
 
+/* Sliding indicator track — sits behind the buttons */
+.view-toggle__indicator {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  background: var(--color-black);
+  border-radius: var(--radius-pill);
+  /* Slides from left(0%) to right(100%) */
+  transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+  z-index: 0;
+}
+
+.view-toggle__indicator--list { transform: translateX(0%); }
+.view-toggle__indicator--map  { transform: translateX(100%); }
+
 .view-toggle__btn {
+  position: relative;
+  z-index: 1;
   padding: 8px 18px;
   min-height: 40px;
   font-size: 12px;
   font-weight: var(--font-semibold);
-  background: var(--bg-surface);
+  background: transparent;
   border: none;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  transition: background var(--duration-fast);
+  /* Text crossfades white↔black as indicator slides under */
+  transition: color 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  color: var(--color-black);
 }
 
 .view-toggle__btn + .view-toggle__btn {
@@ -1212,5 +1292,66 @@
 }
 
 .view-toggle__btn--active {
-  background: var(--color-yellow);
+  color: var(--color-white);
+}
+
+/* ─── Skeleton shimmer (item 8 — loading state ambient motion) ─── */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-gray-200) 25%,
+    var(--color-gray-100) 50%,
+    var(--color-gray-200) 75%
+  );
+  background-size: 200% 100%;
+  border-radius: var(--radius-sm);
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton--card {
+  height: 220px;
+  border: var(--border-width) solid var(--border-muted);
+  border-radius: var(--radius-lg);
+}
+
+/* ─── Toast animation (item 9) ─── */
+.toast {
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width) solid var(--border-default);
+  border-radius: var(--radius-md);
+  box-shadow: 4px 4px 0 var(--color-black);
+  font-size: 14px;
+  font-weight: var(--font-medium);
+  max-width: 320px;
+  animation: toastIn 200ms ease-out forwards;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.toast--exit {
+  animation: toastOut 150ms ease-in forwards;
+}
+
+@keyframes toastOut {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(12px); }
+}
+
+/* ─── prefers-reduced-motion: disable all transitions & animations ─── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }
