@@ -127,11 +127,18 @@ export default function CustomMap({
       attributionControl: false,
     });
 
-    // CartoDB Positron — clean light basemap with minimal label clutter
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    // Clean street map basemap (OpenStreetMap default, or configurable via VITE_MAP_TILE_URL / VITE_MAP_API_KEY)
+    const apiKey = import.meta.env.VITE_MAP_API_KEY;
+    const tileUrl = import.meta.env.VITE_MAP_TILE_URL || (
+      apiKey
+        ? `https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?api_key=${apiKey}`
+        : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+    );
+
+    L.tileLayer(tileUrl, {
       maxZoom: 19,
-      subdomains: 'abcd',
-      attribution: '&copy; CartoDB',
+      subdomains: 'abc',
+      attribution: '&copy; OpenStreetMap contributors',
     }).addTo(map);
 
     const markersGroup = L.layerGroup().addTo(map);
