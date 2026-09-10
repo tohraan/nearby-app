@@ -19,6 +19,7 @@ import BundleCard from '../components/BundleCard.jsx';
 import VenueImage from '../components/VenueImage.jsx';
 import PlaceDetail from './PlaceDetail.jsx';
 import BundleDetail from './BundleDetail.jsx';
+import VibeRouletteModal from '../components/VibeRouletteModal.jsx';
 
 const CATEGORIES = ['all', 'meetups', 'movies', 'food', 'cafe', 'nightlife', 'entertainment', 'outdoor', 'sports', 'culture', 'attraction', 'shopping'];
 
@@ -50,6 +51,7 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace, onNav
   const [selectedDistance, setSelectedDistance] = useState('all');
   const [view, setView] = useState('list'); // 'list' vs 'map'
   const [showFilterModal, setShowFilterModal] = useState(false);
+  const [showRoulette, setShowRoulette] = useState(false);
   
   // Infinite Scroll Pagination
   const [page, setPage] = useState(1);
@@ -383,7 +385,7 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace, onNav
     <div className="app-shell__content">
       {/* ─── 3 Distinct Visual Bands at Top of Screen ─── */}
       <div style={{ marginBottom: '20px' }}>
-        {/* Band a: Search bar (full width) + single Filter icon button */}
+        {/* Band a: Search bar (full width) + Roulette spin button + single Filter icon button */}
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           <div style={{ flex: 1, position: 'relative' }}>
             <Search size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
@@ -396,6 +398,31 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace, onNav
               style={{ paddingLeft: '42px', height: '48px', fontSize: '15px', borderRadius: '10px' }}
             />
           </div>
+
+          {/* Vibe Roulette Header Button */}
+          <button
+            className="neo-btn"
+            onClick={() => setShowRoulette(true)}
+            style={{
+              height: '48px',
+              padding: '0 14px',
+              backgroundColor: 'var(--color-yellow)',
+              border: '2px solid var(--color-black)',
+              borderRadius: '10px',
+              fontWeight: 900,
+              fontSize: '13px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '2px 2px 0 var(--color-black)',
+              flexShrink: 0,
+              cursor: 'pointer',
+            }}
+            title="Spin Vibe Roulette"
+          >
+            <span style={{ fontSize: '18px' }}>🎰</span>
+            <span style={{ letterSpacing: '0.02em' }}>ROULETTE</span>
+          </button>
 
           <button
             className="neo-btn neo-btn--secondary neo-btn--icon"
@@ -1018,6 +1045,44 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace, onNav
           </div>
         </div>
       )}
+
+      {/* ─── Floating Vibe Roulette Action Button ─── */}
+      <button
+        onClick={() => setShowRoulette(true)}
+        style={{
+          position: 'fixed',
+          bottom: '84px',
+          right: '18px',
+          zIndex: 90,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          padding: '10px 16px',
+          backgroundColor: 'var(--color-yellow)',
+          color: 'var(--color-black)',
+          border: '2.5px solid var(--color-black)',
+          borderRadius: '999px',
+          fontWeight: 900,
+          fontSize: '13px',
+          boxShadow: '3px 3px 0 var(--color-black)',
+          cursor: 'pointer',
+          transition: 'all 0.15s ease',
+        }}
+        title="Can't decide? Spin Vibe Roulette"
+      >
+        <span style={{ fontSize: '18px' }}>🎰</span>
+        <span>SPIN VIBE</span>
+      </button>
+
+      {/* ─── Vibe Roulette Modal ─── */}
+      <VibeRouletteModal
+        isOpen={showRoulette}
+        onClose={() => setShowRoulette(false)}
+        places={places}
+        userLat={lat}
+        userLng={lng}
+        onNavigateToPlace={onNavigateToPlace}
+      />
     </div>
   );
 }
