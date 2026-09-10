@@ -5,7 +5,7 @@
  * and gallery recommendation cards.
  */
 
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Send, MapPin, Sparkles, WifiOff, Loader2, ExternalLink, Coffee, Sunset, Utensils, Mountain, Wine, Landmark, ChevronRight, Camera, GlassWater, Compass, Trash2 } from 'lucide-react';
 import { useGeolocation } from '../hooks/useGeolocation.js';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
@@ -14,6 +14,7 @@ import { getCachedPlaceById } from '../lib/db.js';
 import RelatedContent from '../components/RelatedContent.jsx';
 import VenueImage from '../components/VenueImage.jsx';
 import { FALLBACK_PLACES } from '../lib/fallbackData.js';
+import { CATEGORY_EMOJI, getActionableUrl, getActionLabel } from '../lib/geo.js';
 
 const CHAT_STORAGE_KEY = 'nearby_chat_history';
 
@@ -85,7 +86,7 @@ const STATUS_WORDS = [
   "Aligning coordinates..."
 ];
 
-export default function Chat({ onNavigateToPlace }) {
+export function ChatContent({ onNavigateToPlace }) {
   const { lat, lng } = useGeolocation();
   const isOnline = useOnlineStatus();
   
@@ -587,3 +588,31 @@ export default function Chat({ onNavigateToPlace }) {
   );
 }
 
+export default class Chat extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('Chat Error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="app-shell__content chat-screen" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 'calc(100dvh - 84px)' }}>
+          <div style={{ textAlign: 'center', padding: '20px' }}>
+            <h2>Guide is temporarily unavailable</h2>
+            <p style={{ color: 'var(--text-muted)' }}>Something went wrong while rendering the chat.<br/>Please try refreshing the page.</p>
+          </div>
+        </div>
+      );
+    }
+    return <ChatContent {...this.props} />;
+  }
+}

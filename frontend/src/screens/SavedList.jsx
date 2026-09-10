@@ -16,22 +16,29 @@ export default function SavedList({ onNavigateToPlace }) {
   const [savedPlaces, setSavedPlaces] = useState([]);
   const [loading, setLoading] = useState(true);
   const [undoToast, setUndoToast] = useState(null);
+  const [error, setError] = useState(null);
   const isOnline = useOnlineStatus();
 
   useEffect(() => {
     async function load() {
-      const ids = await getSavedPlaceIds();
-      const places = [];
-      for (const id of ids) {
-        let place = await getCachedPlaceById(id);
-        if (!place) {
-          // fallback to curated data set
-          place = FALLBACK_PLACES.find(fp => fp.id === id) || null;
+      try {
+        const ids = await getSavedPlaceIds();
+        const places = [];
+        for (const id of ids) {
+          let place = await getCachedPlaceById(id);
+          if (!place) {
+            // fallback to curated data set
+            place = FALLBACK_PLACES.find(fp => fp.id === id) || null;
+          }
+          if (place) places.push(place);
         }
-        if (place) places.push(place);
+        setSavedPlaces(places);
+      } catch (err) {
+        console.error('Failed to load saved places:', err);
+        setError(err);
+      } finally {
+        setLoading(false);
       }
-      setSavedPlaces(places);
-      setLoading(false);
     }
     load();
   }, []);
@@ -89,7 +96,15 @@ export default function SavedList({ onNavigateToPlace }) {
         {isOnline ? 'SYNCED' : 'OFFLINE — showing local saves'}
       </div>
 
-      {savedPlaces.length === 0 ? (
+      {error ? (
+        <div className="empty-state">
+          <div className="empty-state__icon">⚠️</div>
+          <div className="empty-state__title">Error Loading Saves</div>
+          <div className="empty-state__desc">
+            {error.message || String(error)}
+          </div>
+        </div>
+      ) : savedPlaces.length === 0 ? (
         <div className="empty-state">
           <div className="empty-state__icon">✦</div>
           <div className="empty-state__title">NOTHING SAVED YET</div>
@@ -102,7 +117,7 @@ export default function SavedList({ onNavigateToPlace }) {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-          {savedPlaces.map(place => (
+          {savedPlaces.filter(Boolean).map(place => (
             <div 
               key={place.id} 
               className="neo-card neo-card--clickable place-card" 

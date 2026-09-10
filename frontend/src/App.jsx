@@ -3,15 +3,13 @@ import { Map, Heart, MessageSquare, User } from 'lucide-react';
 import NearbyFeed from './screens/NearbyFeed.jsx';
 import SavedList from './screens/SavedList.jsx';
 import Chat from './screens/Chat.jsx';
-"import GroupDetail from './screens/GroupDetail.jsx';"
+import GroupDetail from './screens/GroupDetail.jsx';
 import PlaceDetail from './screens/PlaceDetail.jsx';
 import Profile from './screens/Profile.jsx';
 import MeetupDetail from './screens/MeetupDetail.jsx';
 import MovieDetail from './screens/MovieDetail.jsx';
 import CreateMeetup from './screens/CreateMeetup.jsx';
 import { initOfflineSync } from './lib/offlineSync.js';
-import { api } from './lib/api.js';
-import { cachePlaces, getPlacesCount } from './lib/db.js';
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState('nearby');
@@ -28,14 +26,6 @@ export default function App() {
       try {
         // Init sync listeners
         initOfflineSync();
-
-        // Check if we need to hydrate local places cache
-        const count = await getPlacesCount();
-        if (count === 0 && navigator.onLine) {
-          console.log('Hydrating local places cache from static bundle...');
-          const places = await api.getPlaces();
-          await cachePlaces(places);
-        }
       } catch (err) {
         console.error('App boot warning:', err);
       } finally {

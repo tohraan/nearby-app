@@ -17,6 +17,7 @@ export default function CustomMap({
   userLng,
   selectedPlaceId,
   onSelectPlace,
+  onVisiblePlacesChange,
   onHostActivity,
   visitedIds = new Set(),
 }) {
@@ -294,9 +295,24 @@ export default function CustomMap({
       });
     };
 
+    const updateVisiblePlaces = () => {
+      if (!onVisiblePlacesChange) return;
+      const bounds = map.getBounds();
+      const visible = allItems.filter(item => bounds.contains([item.lat, item.lng]));
+      onVisiblePlacesChange(visible);
+    };
+
     map.on('zoomend', onZoomEnd);
-    return () => { map.off('zoomend', onZoomEnd); };
-  }, [places, groups, selectedPlaceId, visitedIds, onSelectPlace]);
+    map.on('moveend', updateVisiblePlaces);
+    
+    // Initial call to populate panel
+    updateVisiblePlaces();
+
+    return () => { 
+      map.off('zoomend', onZoomEnd);
+      map.off('moveend', updateVisiblePlaces);
+    };
+  }, [places, groups, selectedPlaceId, visitedIds, onSelectPlace, onVisiblePlacesChange]);
 
   // Smooth fly to selected place
   useEffect(() => {

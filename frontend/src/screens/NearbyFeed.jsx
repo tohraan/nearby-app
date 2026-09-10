@@ -2,19 +2,23 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Search, MapPin, List, Map as MapIcon, Star, Bell, ExternalLink, SlidersHorizontal, Heart, X } from 'lucide-react';
 import { useGeolocation } from '../hooks/useGeolocation.js';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
-import { getCachedPlaces, getSavedPlaceIds, savePlaceLocally, unsavePlaceLocally, getVisitedPlaceIds } from '../lib/db.js';
-import { sortByDistance, formatDistance, CATEGORY_EMOJI, CATEGORY_LABELS, getPlaceImage, getActionableUrl, getActionLabel, TOP_LEVEL_VERTICALS, getVerticalForCategory, formatPriceDisplay, getPriceRangeSignal } from '../lib/geo.js';
+import { getCachedPlaces, cachePlaces, getSavedPlaceIds, savePlaceLocally, unsavePlaceLocally, getVisitedPlaceIds } from '../lib/db.js';
+import { sortByDistance, formatDistance, isValidDistance, CATEGORY_EMOJI, CATEGORY_LABELS, getPlaceImage, getActionableUrl, getActionLabel, TOP_LEVEL_VERTICALS, getVerticalForCategory, formatPriceDisplay, getPriceRangeSignal } from '../lib/geo.js';
 
 import { FALLBACK_PLACES } from '../lib/fallbackData.js';
 import { FALLBACK_MEETUPS } from '../lib/meetupData.js';
 import { FALLBACK_MOVIES } from '../lib/movieData.js';
+import { SEEDED_BUNDLES } from '../lib/bundleData.js';
 import { queueAction } from '../lib/offlineSync.js';
 import api from '../lib/api.js';
 import CustomMap from '../components/CustomMap.jsx';
 import TrendingTicker from '../components/TrendingTicker.jsx';
 import MeetupCard from '../components/MeetupCard.jsx';
 import MovieCard from '../components/MovieCard.jsx';
+import BundleCard from '../components/BundleCard.jsx';
 import VenueImage from '../components/VenueImage.jsx';
+import PlaceDetail from './PlaceDetail.jsx';
+import BundleDetail from './BundleDetail.jsx';
 
 const CATEGORIES = ['all', 'meetups', 'movies', 'food', 'cafe', 'nightlife', 'entertainment', 'outdoor', 'sports', 'culture', 'attraction', 'shopping'];
 
@@ -36,6 +40,7 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace, onNav
   const [places, setPlaces] = useState([]);
   const [savedIds, setSavedIds] = useState(new Set());
   const [visitedIds, setVisitedIds] = useState(new Set());
+  const [selectedBundle, setSelectedBundle] = useState(null);
   
   // Filters & State
   const [activeVertical, setActiveVertical] = useState('all');
@@ -62,6 +67,7 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace, onNav
   );
   // Track which place IDs just triggered a save animation (cleared after 400ms)
   const [justSavedIds, setJustSavedIds] = useState(new Set());
+  const [visibleMapPlaces, setVisibleMapPlaces] = useState([]);
 
   // Load cached places & user saves
   useEffect(() => {
@@ -71,6 +77,19 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace, onNav
         setPlaces(FALLBACK_PLACES);
       } else {
         setPlaces(cached);
+      }
+      
+      // Hydrate local cache and state from backend
+      if (isOnline) {
+        try {
+          const fresh = await api.getPlaces();
+          if (fresh && fresh.length > 0) {
+            setPlaces(fresh);
+            await cachePlaces(fresh);
+          }
+        } catch (err) {
+          console.warn('Failed to fetch fresh places:', err);
+        }
       }
       
       const saved = await getSavedPlaceIds();
@@ -133,6 +152,14 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace, onNav
     return result;
   }, [places, lat, lng, selectedCity, selectedDistance, category, search]);
 
+  const eatDrinkPlaces = useMemo(() => {
+    return filteredPlaces.filter(p => ['food', 'cafe', 'nightlife'].includes(p.category));
+  }, [filteredPlaces]);
+
+  const attractionPlaces = useMemo(() => {
+    return filteredPlaces.filter(p => ['attraction', 'culture', 'entertainment', 'outdoor', 'shopping'].includes(p.category));
+  }, [filteredPlaces]);
+
   // Infinite Scroll Paginated Subset
   const visiblePlaces = useMemo(() => {
     return filteredPlaces.slice(0, page * pageSize);
@@ -186,6 +213,96 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace, onNav
 
     setSavedIds(newSaved);
   }, [savedIds, isOnline]);
+
+  const renderPlaceCard = useCallback((place) => {
+    const ctaLabel = getActionLabel(place);
+    const isSaved = savedIds.has(place.id);
+    const addressExcerpt = place.address ? (place.address.length > 32 ? place.address.slice(0, 32) + '...' : place.address) : null;
+
+    return (
+      <div 
+        key={place.id} 
+        className="neo-card neo-card--clickable place-card-badge-layout" 
+        onClick={() => onNavigateToPlace?.(place.id)}
+      >
+        <div className="place-card-top">
+          {/* Fixed 68x68px top-left badge slot (Phase 3 Redesign) */}
+          <div className="place-badge-slot">
+            <VenueImage place={place} alt={place.name} />
+          </div>
+
+          {/* Right text column */}
+          <div className="place-info-col">
+            <div className="place-header-row">
+              <div className={`category-tag category-tag--${place.category}`} style={{ fontFamily: 'var(--font-secondary)', fontSize: '11px' }}>
+                {CATEGORY_EMOJI[place.category]} {place.category}{getPriceRangeSignal(place)}
+              </div>
+              {place.actionStatus === 'verified' && (
+                <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--state-success)', backgroundColor: 'var(--color-mint)', padding: '1px 6px', borderRadius: '999px', border: '1px solid var(--color-black)' }}>
+                  ✓ Verified
+                </span>
+              )}
+            </div>
+
+            <h3 className="place-title-name">{place.name}</h3>
+
+            <div className="place-meta-line" style={{ fontFamily: 'var(--font-secondary)' }}>
+              <span className="place-card__rating"><Star size={11} fill="var(--color-yellow)" stroke="var(--color-black)" /> {place.rating || 4.8}</span>
+              <span>•</span>
+              <span className="place-card__distance">{isValidDistance(place.distance) ? formatDistance(place.distance) : '—'}</span>
+              {place.city && <><span>•</span><span>{place.city}</span></>}
+            </div>
+
+            {addressExcerpt && (
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'var(--font-secondary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <MapPin size={10} style={{ flexShrink: 0 }} />
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{addressExcerpt}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Action Row */}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: 'auto', paddingTop: '8px' }}>
+          <a
+            href={getActionableUrl(place)}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="neo-btn neo-btn--sm neo-btn--primary"
+            style={{ flex: 1, textDecoration: 'none', fontWeight: 700, padding: '0 10px', fontSize: '12px', minHeight: '36px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+          >
+            <span>{ctaLabel}</span>
+            <ExternalLink size={12} />
+          </a>
+
+          <button
+            className={[
+              'place-card__save-btn',
+              isSaved ? 'place-card__save-btn--saved' : '',
+              justSavedIds.has(place.id) ? 'place-card__save-btn--just-saved' : '',
+            ].join(' ')}
+            onClick={(e) => { e.stopPropagation(); handleToggleSave(place.id); }}
+            title={isSaved ? 'Unsave place' : 'Save place'}
+            aria-label="Save place"
+            style={{ width: '36px', height: '36px', minHeight: '36px', padding: 0 }}
+          >
+            {justSavedIds.has(place.id) && (
+              <span className="save-particles" aria-hidden="true">
+                {[1,2,3,4,5,6].map(i => <span key={i} className="save-particle" />)}
+              </span>
+            )}
+            <Heart
+              className="save-heart-icon"
+              size={15}
+              fill={isSaved ? '#FFFFFF' : 'none'}
+              color={isSaved ? '#FFFFFF' : 'var(--color-black)'}
+            />
+          </button>
+        </div>
+      </div>
+    );
+  }, [savedIds, justSavedIds, handleToggleSave, onNavigateToPlace]);
 
   const requestNotificationPermission = async () => {
     if (typeof Notification === 'undefined') return;
@@ -246,6 +363,19 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace, onNav
           ))}
         </div>
       </div>
+    );
+  }
+
+  if (selectedBundle) {
+    return (
+      <BundleDetail 
+        bundle={selectedBundle} 
+        onBack={() => setSelectedBundle(null)} 
+        onSelectPlace={(placeId) => {
+          setSelectedBundle(null);
+          onNavigateToPlace?.(placeId);
+        }} 
+      />
     );
   }
 
@@ -413,88 +543,181 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace, onNav
 
       {/* ─── Full Map View (When Map toggle selected) ─── */}
       {view === 'map' && (
-        <div 
-          className="map-container" 
-          style={{ 
-            position: 'relative', 
-            width: '100%', 
-            height: 'clamp(550px, 78vh, 800px)',
-            marginBottom: 'var(--space-5)',
-            borderRadius: '16px',
-            overflow: 'hidden',
-            border: '2px solid var(--color-black)',
-            boxShadow: '4px 4px 0 var(--color-black)'
-          }}
-        >
-          <CustomMap
-            places={filteredPlaces}
-            groups={groups}
-            userLat={lat}
-            userLng={lng}
-            selectedPlaceId={selectedPlaceId}
-            onSelectPlace={(id) => setSelectedPlaceId(id)}
-            onHostActivity={() => setShowCreateActivity(true)}
-            visitedIds={visitedIds}
-          />
-          
-          {/* Floating Bottom Card on Map Selection */}
-          {selectedLocation && (
-            <div 
-              className="neo-card" 
-              style={{
-                position: 'absolute',
-                bottom: '24px',
-                left: '24px',
-                right: '24px',
-                zIndex: 1000,
-                padding: 'var(--space-4)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
-                backgroundColor: 'var(--color-paper)'
-              }}
-            >
-              <button 
-                onClick={() => setSelectedPlaceId(null)}
-                style={{ position: 'absolute', top: '8px', right: '8px', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
-              >
-                ✕
-              </button>
-              
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ fontSize: '24px' }}>{CATEGORY_EMOJI[selectedLocation.category || 'outdoor']}</div>
-                <div style={{ flex: 1 }}>
-                  <h3 style={{ margin: 0, fontFamily: 'var(--font-serif)', fontSize: '18px', fontWeight: 700 }}>{selectedLocation.name}</h3>
-                  <div style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <span>{selectedLocation.category}</span>
-                    {selectedLocation.distance !== undefined && (
-                      <>
-                        <span>•</span>
-                        <span><MapPin size={10} style={{ display: 'inline', marginBottom: '-1px' }} /> {formatDistance(selectedLocation.distance)}</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-              
-              <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                <button className="neo-btn neo-btn--primary" onClick={() => onNavigateToPlace?.(selectedLocation.id)} style={{ flex: 1 }}>
-                  View Details
-                </button>
-                <a
-                  href={getActionableUrl(selectedLocation)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="neo-btn neo-btn--secondary"
-                  style={{ flex: 1, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontSize: '13px', fontWeight: 700 }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {getActionLabel(selectedLocation)} <ExternalLink size={12} />
-                </a>
-              </div>
+        <>
+          <style>{`
+            .split-view-container {
+              display: flex;
+              flex-direction: column;
+              height: clamp(550px, 78vh, 800px);
+              margin-bottom: var(--space-5);
+              border-radius: 16px;
+              overflow: hidden;
+              border: 2px solid var(--color-black);
+              box-shadow: 4px 4px 0 var(--color-black);
+              position: relative;
+            }
+            .split-view-map {
+              flex: 1;
+              position: relative;
+            }
+            .split-view-panel {
+              position: absolute;
+              bottom: 0;
+              left: 0;
+              right: 0;
+              z-index: 1000;
+              transition: all 0.2s ease-out;
+            }
+            .split-view-panel--default {
+              background: transparent;
+              padding: 0 16px 16px 16px;
+            }
+            .split-view-panel--expanded {
+              background-color: var(--color-paper);
+              border-top: 3px solid var(--color-black);
+              border-radius: 24px 24px 0 0;
+              height: 80%;
+              padding: 16px;
+              box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
+            }
+            .top-picks-header {
+              display: none;
+            }
+            .compact-cards-container {
+              display: flex;
+              gap: 12px;
+              overflow-x: auto;
+              padding-bottom: 8px;
+              scroll-snap-type: x mandatory;
+            }
+            .compact-cards-container::-webkit-scrollbar {
+              display: none;
+            }
+            .compact-card-item {
+              flex: 0 0 85%;
+              scroll-snap-align: center;
+              background-color: var(--color-paper);
+            }
+            @media (min-width: 900px) {
+              .split-view-container {
+                flex-direction: row;
+              }
+              .split-view-map {
+                flex: 2;
+                height: 100%;
+              }
+              .split-view-panel {
+                position: relative;
+                flex: 1;
+                border-top: none;
+                border-left: 2px solid var(--color-black);
+                height: 100% !important;
+                max-width: 450px;
+                border-radius: 0;
+              }
+              .split-view-panel--default {
+                background-color: var(--color-paper);
+                padding: var(--space-4);
+              }
+              .split-view-panel--expanded {
+                border-top: none;
+                border-radius: 0;
+                box-shadow: none;
+                height: 100%;
+                padding: var(--space-4);
+              }
+              .top-picks-header {
+                display: block;
+                font-family: var(--font-serif);
+                font-size: 18px;
+                font-weight: 700;
+                margin-bottom: 16px;
+              }
+              .compact-cards-container {
+                flex-direction: column;
+                overflow-x: visible;
+                scroll-snap-type: none;
+                padding-bottom: 0;
+              }
+              .compact-card-item {
+                flex: auto;
+              }
+            }
+          `}</style>
+          <div className="split-view-container">
+            <div className="split-view-map">
+              <CustomMap
+                places={filteredPlaces}
+                groups={groups}
+                userLat={lat}
+                userLng={lng}
+                selectedPlaceId={selectedPlaceId}
+                onSelectPlace={(id) => setSelectedPlaceId(id)}
+                onVisiblePlacesChange={(places) => setVisibleMapPlaces(places)}
+                onHostActivity={() => setShowCreateActivity(true)}
+                visitedIds={visitedIds}
+              />
             </div>
-          )}
-        </div>
+            
+            <div className={`split-view-panel ${selectedPlaceId ? 'split-view-panel--expanded' : 'split-view-panel--default'}`} style={{ overflowY: selectedPlaceId ? 'auto' : 'visible' }}>
+              {selectedPlaceId ? (
+                <div style={{ animation: 'slideFadeIn 0.2s ease-out' }}>
+                  <PlaceDetail 
+                    placeId={selectedPlaceId} 
+                    displayMode="panel" 
+                    onBack={() => setSelectedPlaceId(null)}
+                    onNavigateToPlace={onNavigateToPlace}
+                    onNavigateToMeetup={onNavigateToMeetup}
+                    onNavigateToMovie={onNavigateToMovie}
+                  />
+                </div>
+              ) : (
+                <div style={{ animation: 'slideFadeIn 0.2s ease-out' }}>
+                  <h3 className="top-picks-header">Top picks here</h3>
+                  {visibleMapPlaces.length === 0 ? (
+                    <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px', marginTop: '32px' }}>
+                      No places found in this area. Try zooming out.
+                    </div>
+                  ) : (
+                    <div className="compact-cards-container">
+                      {visibleMapPlaces.map((place, idx) => (
+                        <div 
+                          key={place.id}
+                          className="neo-card neo-card--clickable compact-card-item stagger-anim"
+                          onClick={() => setSelectedPlaceId(place.id)}
+                          style={{ padding: '12px', display: 'flex', gap: '12px', alignItems: 'center', animationDelay: `${idx * 80}ms` }}
+                        >
+                          <div style={{ width: '80px', height: '80px', borderRadius: '8px', overflow: 'hidden', border: '1.5px solid var(--color-black)', flexShrink: 0 }}>
+                            <VenueImage place={place} alt={place.name} />
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '15px', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{place.name}</div>
+                            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                              ⭐ {place.rating || 4.8}{isValidDistance(place.distance) ? ` • ${formatDistance(place.distance)}` : ''}
+                            </div>
+                            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              {CATEGORY_EMOJI[place.category]} <span>{place.category}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+          <style>{`
+            @keyframes slideFadeIn {
+              from { opacity: 0; transform: translateY(10px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+            .stagger-anim {
+              opacity: 0;
+              animation: slideFadeIn 0.2s ease-out forwards;
+            }
+          `}</style>
+        </>
       )}
 
       {/* ─── Main Results Discovery Grid (List View) ─── */}
@@ -555,11 +778,117 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace, onNav
                 ))}
               </div>
             </div>
+          ) : activeVertical === 'all' && category === 'all' ? (
+            /* ─── PHASE 1: SECTIONED HOME VIEW (ALL VERTICALS AT ONCE) ─── */
+            <div className="home-section-rows">
+              {/* Row 1: Eat & Drink */}
+              <div className="section-horizontal-row">
+                <div className="section-row-header">
+                  <div className="section-row-title">
+                    <span>🍽️</span>
+                    <h2>Eat & Drink</h2>
+                    <span className="section-row-count">({eatDrinkPlaces.length} spots)</span>
+                  </div>
+                  <button className="section-see-all-btn" onClick={() => { setActiveVertical('eat_drink'); setCategory('food'); }}>
+                    See all →
+                  </button>
+                </div>
+                <div className="horizontal-row-track">
+                  {eatDrinkPlaces.slice(0, 8).map(place => (
+                    <div key={place.id} className="horizontal-row-card-item">
+                      {renderPlaceCard(place)}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Row 2: Attractions & Culture */}
+              <div className="section-horizontal-row">
+                <div className="section-row-header">
+                  <div className="section-row-title">
+                    <span>🎟️</span>
+                    <h2>Attractions & Culture</h2>
+                    <span className="section-row-count">({attractionPlaces.length} spots)</span>
+                  </div>
+                  <button className="section-see-all-btn" onClick={() => { setActiveVertical('attractions'); setCategory('attraction'); }}>
+                    See all →
+                  </button>
+                </div>
+                <div className="horizontal-row-track">
+                  {attractionPlaces.slice(0, 8).map(place => (
+                    <div key={place.id} className="horizontal-row-card-item">
+                      {renderPlaceCard(place)}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Row 3: Sports & Meetups */}
+              <div className="section-horizontal-row">
+                <div className="section-row-header">
+                  <div className="section-row-title">
+                    <span>🏐</span>
+                    <h2>Sports & Meetups</h2>
+                    <span className="section-row-count">({FALLBACK_MEETUPS.length} meetups)</span>
+                  </div>
+                  <button className="section-see-all-btn" onClick={() => { setActiveVertical('sports_meetups'); setCategory('meetups'); }}>
+                    See all →
+                  </button>
+                </div>
+                <div className="horizontal-row-track">
+                  {FALLBACK_MEETUPS.slice(0, 6).map(meetup => (
+                    <div key={meetup.id} className="horizontal-row-card-item">
+                      <MeetupCard meetup={meetup} onSelect={() => onNavigateToMeetup?.(meetup.id)} onJoin={() => onNavigateToMeetup?.(meetup.id)} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Row 4: Movies Nearby */}
+              <div className="section-horizontal-row">
+                <div className="section-row-header">
+                  <div className="section-row-title">
+                    <span>🎬</span>
+                    <h2>Movies Nearby</h2>
+                    <span className="section-row-count">({FALLBACK_MOVIES.length} playing)</span>
+                  </div>
+                  <button className="section-see-all-btn" onClick={() => { setActiveVertical('movies'); setCategory('movies'); }}>
+                    See all →
+                  </button>
+                </div>
+                <div className="horizontal-row-track">
+                  {FALLBACK_MOVIES.slice(0, 6).map(movie => (
+                    <div key={movie.id} className="horizontal-row-card-item">
+                      <MovieCard movie={movie} onSelect={() => onNavigateToMovie?.(movie.id)} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Row 5: Trip Bundles */}
+              <div className="section-horizontal-row">
+                <div className="section-row-header">
+                  <div className="section-row-title">
+                    <span>🧭</span>
+                    <h2>Trip Bundles</h2>
+                    <span className="section-row-count">({SEEDED_BUNDLES.length} itineraries)</span>
+                  </div>
+                </div>
+                <div className="horizontal-row-track">
+                  {SEEDED_BUNDLES.map(bundle => (
+                    <div key={bundle.id} className="horizontal-row-card-item">
+                      <BundleCard bundle={bundle} onSelect={(b) => setSelectedBundle(b)} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           ) : (
+            /* Single Vertical Filtered Grid View */
             <>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
                 <h2 style={{ margin: 0, fontFamily: 'var(--font-serif)', fontSize: '22px', fontWeight: 700 }}>
-                  Popular Near You ({filteredPlaces.length})
+                  Filtered Spots ({filteredPlaces.length})
                 </h2>
                 <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                   Showing {visiblePlaces.length} of {filteredPlaces.length} spots
@@ -577,136 +906,28 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace, onNav
                   className="discovery-grid"
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
                     gap: '18px'
                   }}
                 >
-                  {visiblePlaces.map(place => {
-                const ctaLabel = getActionLabel(place);
-                const isSaved = savedIds.has(place.id);
-                const addressExcerpt = place.address ? (place.address.length > 38 ? place.address.slice(0, 38) + '...' : place.address) : null;
+                  {visiblePlaces.map(place => renderPlaceCard(place))}
+                </div>
+              )}
 
-                return (
-                  <div 
-                    key={place.id} 
-                    className="neo-card neo-card--clickable place-card" 
-                    style={{ padding: '14px', display: 'flex', flexDirection: 'column', height: '100%' }}
-                    onClick={() => onNavigateToPlace?.(place.id)}
+              {hasMore && (
+                <div ref={observerTargetRef} style={{ textAlign: 'center', marginTop: '24px', paddingBottom: '16px' }}>
+                  <button
+                    className="neo-btn neo-btn--secondary"
+                    onClick={() => setPage(prev => prev + 1)}
                   >
-                    {/* Clean photo / Honest Fallback */}
-                    <div className="place-card__image" style={{ position: 'relative', overflow: 'hidden', height: '160px', borderRadius: '10px', border: '1.5px solid var(--color-black)', marginBottom: '12px' }}>
-                      <VenueImage place={place} alt={place.name} />
-                    </div>
-
-                    {/* Category tag + Verified badge row */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '4px' }}>
-                      <div className={`category-tag category-tag--${place.category}`} style={{ fontFamily: 'var(--font-secondary)' }}>
-                        {CATEGORY_EMOJI[place.category]} {place.category}{getPriceRangeSignal(place)}
-                      </div>
-                      {place.actionStatus === 'verified' && (
-                        <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--state-success)', backgroundColor: 'var(--color-mint)', padding: '2px 8px', borderRadius: '999px', border: '1px solid var(--color-black)', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                          ✓ Verified
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Place Name in Heading Typography */}
-                    <div className="place-card__name" style={{ fontSize: '18px', fontWeight: 700, lineHeight: 1.25, color: 'var(--color-black)' }}>{place.name}</div>
-                    
-                    {/* Address snippet in Geist Thin / secondary typography */}
-                    {addressExcerpt && (
-                      <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontFamily: 'var(--font-secondary)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        <MapPin size={12} style={{ flexShrink: 0 }} />
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{addressExcerpt}</span>
-                      </div>
-                    )}
-
-                    {/* Rating + distance + city + muted price in secondary typography */}
-                    <div className="place-card__meta" style={{ marginTop: '6px', fontFamily: 'var(--font-secondary)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span className="place-card__rating"><Star size={12} fill="var(--color-yellow)" stroke="var(--color-black)" /> {place.rating || 4.8}</span>
-                      <span>•</span>
-                      <span className="place-card__distance">{formatDistance(place.distance)}</span>
-                      {place.city && <><span>•</span><span>{place.city}</span></>}
-                      {formatPriceDisplay(place) && (
-                        <>
-                          <span>•</span>
-                          <span style={{ color: 'var(--text-secondary)', fontWeight: 550 }}>{formatPriceDisplay(place)}</span>
-                        </>
-                      )}
-                    </div>
-
-                    {/* Feature tags snippet in secondary typography */}
-                    {((place.tags && place.tags.length > 0) || (place.cuisine && place.cuisine.length > 0)) && (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '8px' }}>
-                        {(place.tags || place.cuisine).slice(0, 2).map((t, idx) => (
-                          <span key={idx} style={{ fontSize: '11px', fontFamily: 'var(--font-secondary)', color: 'var(--text-secondary)', backgroundColor: 'var(--color-cream)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--border-muted)' }}>
-                            #{t}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Spacer pushing action row to bottom */}
-                    <div style={{ flex: 1, minHeight: '12px' }} />
-
-                    {/* Action Row: ONE primary button (filled, primary accent) + ONE save icon button */}
-                    <div className="place-card__actions" style={{ marginTop: '12px' }}>
-                      <a
-                        href={getActionableUrl(place)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="neo-btn neo-btn--sm neo-btn--primary"
-                        style={{ flex: 1, textDecoration: 'none', fontWeight: 700, padding: '0 12px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {ctaLabel} <ExternalLink size={12} />
-                      </a>
-                      <button
-                        className={[
-                          'place-card__save-btn',
-                          isSaved ? 'place-card__save-btn--saved' : '',
-                          justSavedIds.has(place.id) ? 'place-card__save-btn--just-saved' : '',
-                        ].join(' ')}
-                        onClick={(e) => { e.stopPropagation(); handleToggleSave(place.id); }}
-                        title={isSaved ? 'Unsave place' : 'Save place'}
-                        aria-label="Save place"
-                      >
-                        {/* Particle burst — only renders during the 450ms save animation window */}
-                        {justSavedIds.has(place.id) && (
-                          <span className="save-particles" aria-hidden="true">
-                            {[1,2,3,4,5,6].map(i => <span key={i} className="save-particle" />)}
-                          </span>
-                        )}
-                        <Heart
-                          className="save-heart-icon"
-                          size={18}
-                          fill={isSaved ? '#FFFFFF' : 'none'}
-                          color={isSaved ? '#FFFFFF' : 'var(--color-black)'}
-                        />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                    Load More Spots ({filteredPlaces.length - visiblePlaces.length} remaining)
+                  </button>
+                </div>
+              )}
+            </>
           )}
-
-          {/* Infinite Scroll Load Trigger */}
-          {hasMore && (
-            <div ref={observerTargetRef} style={{ textAlign: 'center', marginTop: '24px', paddingBottom: '16px' }}>
-              <button
-                className="neo-btn neo-btn--secondary"
-                onClick={() => setPage(prev => prev + 1)}
-                style={{ fontWeight: 700, padding: '10px 24px' }}
-              >
-                Load More Places (+12)
-              </button>
-            </div>
-          )}
-        </>
+        </div>
       )}
-    </div>
-  )}
 
       {/* ─── View Toggle: sliding indicator ─── */}
       <div className="view-toggle">

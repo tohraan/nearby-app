@@ -5,10 +5,12 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "seed": "node lib/seed.js"
+    "seed": "node lib/seed.js",
+    "seed:places": "node lib/seedPlaces.js"
   },
   "dependencies": {
     "better-sqlite3": "^11.0.0",
+    "compression": "^1.8.1",
     "cors": "^2.8.5",
     "express": "^4.21.0",
     "uuid": "^10.0.0"

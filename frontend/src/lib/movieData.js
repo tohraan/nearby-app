@@ -41,9 +41,6 @@ export const CINEMAS = [
 function todayAt(h, m = 0) {
   const d = new Date(); d.setHours(h, m, 0, 0); return d.toISOString();
 }
-function tomorrowAt(h, m = 0) {
-  const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(h, m, 0, 0); return d.toISOString();
-}
 
 export const FALLBACK_MOVIES = [
   {

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Star, MapPin, ChevronRight, ExternalLink } from 'lucide-react';
 import { FALLBACK_PLACES } from '../lib/fallbackData.js';
+import { getActionLabel } from '../lib/geo.js';
 import VenueImage from './VenueImage.jsx';
 
 const CATEGORY_COLORS = {
@@ -13,7 +14,7 @@ const CATEGORY_COLORS = {
   shopping: '#FADBD8',
 };
 
-export default function TrendingTicker({ onNavigateToPlace }) {
+export function TrendingTickerContent({ onNavigateToPlace }) {
   const [items, setItems] = useState([]);
 
   useEffect(() => {
@@ -155,3 +156,24 @@ export default function TrendingTicker({ onNavigateToPlace }) {
   );
 }
 
+export default class TrendingTicker extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('TrendingTicker Error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return null;
+    }
+    return <TrendingTickerContent {...this.props} />;
+  }
+}

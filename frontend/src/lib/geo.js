@@ -6,24 +6,42 @@
  * Haversine distance between two coordinates (km)
  */
 export function haversineKm(lat1, lng1, lat2, lng2) {
+  if (lat1 == null || lng1 == null || lat2 == null || lng2 == null) return NaN;
+  const numLat1 = Number(lat1);
+  const numLng1 = Number(lng1);
+  const numLat2 = Number(lat2);
+  const numLng2 = Number(lng2);
+  if (isNaN(numLat1) || isNaN(numLng1) || isNaN(numLat2) || isNaN(numLng2)) return NaN;
+
   const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const dLat = ((numLat2 - numLat1) * Math.PI) / 180;
+  const dLng = ((numLng2 - numLng1) * Math.PI) / 180;
   const a =
     Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-    Math.cos((lat2 * Math.PI) / 180) *
+    Math.cos((numLat1 * Math.PI) / 180) *
+    Math.cos((numLat2 * Math.PI) / 180) *
     Math.sin(dLng / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/**
+ * Check if distance is valid
+ */
+export function isValidDistance(km) {
+  return km != null && Number.isFinite(Number(km));
 }
 
 /**
  * Format distance for display
  */
 export function formatDistance(km) {
-  if (km < 0.1) return '<100m';
-  if (km < 1) return `${Math.round(km * 1000)}m`;
-  return `${km.toFixed(1)}km`;
+  // Return a placeholder for any invalid or missing distance value.
+  if (km == null) return '—';
+  const num = Number(km);
+  if (!Number.isFinite(num)) return '—';
+  if (num < 0.1) return '<100m';
+  if (num < 1) return `${Math.round(num * 1000)}m`;
+  return `${num.toFixed(1)}km`;
 }
 
 /**
@@ -152,7 +170,7 @@ const VENUE_REAL_IMAGES = {
 };
 
 // High resolution Unsplash category imagery fallback — diverse per slot
-const CATEGORY_IMAGES = {
+export const CATEGORY_IMAGES = {
   cafe: [
     'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800&auto=format&fit=crop&q=80',
     'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=800&auto=format&fit=crop&q=80',
@@ -288,4 +306,3 @@ export function getActionLabel(place) {
 
   return 'Get directions';
 }
-

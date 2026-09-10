@@ -17,6 +17,7 @@ import cors from 'cors';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import compression from 'compression';
 
 import savesRouter from './routes/saves.js';
 import activityRouter from './routes/activity.js';
@@ -25,6 +26,13 @@ import profileRouter from './routes/profile.js';
 import chatRouter from './routes/chat.js';
 import { getAllPlaces } from './lib/placeContext.js';
 import { getHealthStatus } from './lib/openrouter.js';
+import { seedPlaces } from './lib/seedPlaces.js';
+
+try {
+  seedPlaces();
+} catch (err) {
+  console.warn('⚠️  Place seed skipped:', err.message);
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3001;
@@ -33,21 +41,15 @@ const IS_PROD = process.env.NODE_ENV === 'production';
 const app = express();
 
 app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, curl, serverless) or any vercel.app / localhost origin
-    if (!origin || origin.includes('vercel.app') || origin.includes('netlify.app') || origin.includes('localhost') || origin.includes('127.0.0.1')) {
-      callback(null, true);
-    } else {
-      callback(null, true);
-    }
-  },
-  methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'X-Device-Id'],
+  origin: '*',
+  methods: ['GET', 'POST', 'DELETE', 'OPTIONS', 'PUT', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'X-Device-Id', 'Authorization', 'Accept'],
   maxAge: 86400,
 }));
 
 // ─── Body parsing with size limit ───────────────────────
 app.use(express.json({ limit: '1mb' }));
+app.use(compression());
 
 // ─── Request logging ────────────────────────────────────
 app.use((req, _res, next) => {

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ArrowLeft, Calendar, Users, MapPin, PlusCircle } from 'lucide-react';
 import { SPORTS_LIST, SPORT_ICONS, SPORT_COLORS } from '../lib/meetupData.js';
 import { FALLBACK_PLACES } from '../lib/fallbackData.js';
+import NeoDatePicker from '../components/NeoDatePicker.jsx';
 
 export default function CreateMeetup({ onBack, onCreateSuccess }) {
   const [sport, setSport] = useState('volleyball');
@@ -9,15 +10,17 @@ export default function CreateMeetup({ onBack, onCreateSuccess }) {
   const [placeId, setPlaceId] = useState(FALLBACK_PLACES[0].id);
   const [maxParticipants, setMaxParticipants] = useState(10);
   const [description, setDescription] = useState('');
-  const [startsAtTime, setStartsAtTime] = useState('18:00');
+  
+  // Set default start time to today at 18:00
+  const [startsAt, setStartsAt] = useState(() => {
+    const d = new Date();
+    d.setHours(18, 0, 0, 0);
+    return d.toISOString();
+  });
 
   const handleFormSubmit = (e) => {
     e.preventDefault();
     const chosenPlace = FALLBACK_PLACES.find(p => p.id === placeId) || FALLBACK_PLACES[0];
-    
-    const today = new Date();
-    const [h, m] = startsAtTime.split(':');
-    today.setHours(parseInt(h || 18), parseInt(m || 0), 0, 0);
 
     const newMeetup = {
       id: `meetup_${Date.now()}`,
@@ -27,7 +30,7 @@ export default function CreateMeetup({ onBack, onCreateSuccess }) {
       placeName: chosenPlace.name,
       placeImage: chosenPlace.image,
       city: chosenPlace.city || 'Dubai',
-      startsAt: today.toISOString(),
+      startsAt: startsAt,
       maxParticipants: Number(maxParticipants),
       participants: [
         { id: 'user_me', name: 'You (Host)', avatar: '👑', isHost: true }
@@ -136,23 +139,13 @@ export default function CreateMeetup({ onBack, onCreateSuccess }) {
 
           {/* Time & Capacity Row */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div>
+            <div style={{ position: 'relative', zIndex: 100 }}>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', marginBottom: '6px', fontFamily: 'var(--font-secondary)' }}>
-                Start Time
+                Date & Time
               </label>
-              <input 
-                type="time" 
-                value={startsAtTime}
-                onChange={(e) => setStartsAtTime(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  fontSize: '14px',
-                  borderRadius: '8px',
-                  border: '1.5px solid var(--color-black)',
-                  backgroundColor: 'var(--color-white)',
-                  fontFamily: 'var(--font-secondary)'
-                }}
+              <NeoDatePicker 
+                value={startsAt}
+                onChange={setStartsAt}
               />
             </div>
 

@@ -1,22 +1,8 @@
 /**
- * placeContext.js — Radius-filter cached places for LLM prompt context
+ * placeContext.js — SQLite-backed places data access
  */
 
-import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
-// Load places once at startup
-let places = [];
-try {
-  const dataPath = join(__dirname, '..', '..', 'data', 'uae-places.json');
-  places = JSON.parse(readFileSync(dataPath, 'utf-8'));
-  console.log(`📍 Loaded ${places.length} places for context`);
-} catch {
-  console.warn('⚠️  Could not load uae-places.json');
-}
+import db from '../db.js';
 
 /**
  * Haversine distance in km
@@ -34,18 +20,33 @@ function haversineKm(lat1, lng1, lat2, lng2) {
 }
 
 /**
- * Filter places within radius of user location
- * @param {number} lat - user latitude
- * @param {number} lng - user longitude
- * @param {number} radiusKm - search radius in km (default 5)
- * @param {number} limit - max places to return (default 40)
+ * Filter places within radius of user location using a bounding box pre-filter
  */
 export function getNearbyPlaces(lat, lng, radiusKm = 5, limit = 40) {
-  return places
-    .map(p => ({
-      ...p,
-      distance: haversineKm(lat, lng, p.lat, p.lng),
-    }))
+  // Approx degrees per km
+  const latDelta = radiusKm / 111;
+  const lngDelta = radiusKm / (111 * Math.cos(lat * (Math.PI / 180)));
+
+  const stmt = db.prepare(`
+    SELECT * FROM places 
+    WHERE lat BETWEEN ? AND ? 
+      AND lng BETWEEN ? AND ?
+  `);
+  
+  const candidates = stmt.all(
+    lat - latDelta, lat + latDelta,
+    lng - Math.abs(lngDelta), lng + Math.abs(lngDelta)
+  );
+
+  return candidates
+    .map(p => {
+      p.photos = JSON.parse(p.photos || '[]');
+      p.tags = JSON.parse(p.tags || '[]');
+      return {
+        ...p,
+        distance: haversineKm(lat, lng, p.lat, p.lng),
+      };
+    })
     .filter(p => p.distance <= radiusKm)
     .sort((a, b) => a.distance - b.distance)
     .slice(0, limit);
@@ -55,14 +56,24 @@ export function getNearbyPlaces(lat, lng, radiusKm = 5, limit = 40) {
  * Get a place by ID
  */
 export function getPlaceById(id) {
-  return places.find(p => p.id === id) || null;
+  const p = db.prepare('SELECT * FROM places WHERE id = ?').get(id);
+  if (p) {
+    p.photos = JSON.parse(p.photos || '[]');
+    p.tags = JSON.parse(p.tags || '[]');
+  }
+  return p || null;
 }
 
 /**
  * Get all places (for serving to frontend)
  */
 export function getAllPlaces() {
-  return places;
+  const places = db.prepare('SELECT * FROM places').all();
+  return places.map(p => {
+    p.photos = JSON.parse(p.photos || '[]');
+    p.tags = JSON.parse(p.tags || '[]');
+    return p;
+  });
 }
 
 export default { getNearbyPlaces, getPlaceById, getAllPlaces };

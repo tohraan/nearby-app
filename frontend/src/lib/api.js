@@ -10,7 +10,11 @@
  * - Device ID auto-injection
  */
 
+import { getCachedResponse, setCachedResponse } from './cache.js';
 import { getDeviceId } from './deviceId.js';
+
+// ... (skipping to getPlaces inside api object) ...
+// (Removed broken getPlaces from here)
 
 const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:3001');
 const DEFAULT_TIMEOUT_MS = 10000;
@@ -109,9 +113,32 @@ async function request(path, options = {}, timeoutMs = DEFAULT_TIMEOUT_MS) {
 // ─── API Methods ─────────────────────────────────────────
 
 export const api = {
-  // Places (cached from static bundle)
+  // Places (cached with IndexedDB)
   async getPlaces() {
-    return request('/places');
+    const CACHE_KEY = 'places_all';
+    const cached = await getCachedResponse(CACHE_KEY);
+    
+    // If we have a fresh cache, return it and optionally revalidate in background
+    if (cached && !cached.isStale) {
+      if (navigator.onLine) {
+        request('/places').then(data => setCachedResponse(CACHE_KEY, data)).catch(e => console.warn('Background revalidation failed', e));
+      }
+      return cached.data;
+    }
+    
+    // If no cache or stale, try fetching from backend
+    try {
+      const data = await request('/places');
+      await setCachedResponse(CACHE_KEY, data);
+      return data;
+    } catch (err) {
+      // If backend fetch fails but we have stale cache, return it gracefully
+      if (cached) {
+        console.warn('Backend fetch failed, returning stale cache', err);
+        return cached.data;
+      }
+      throw err;
+    }
   },
 
   // Saves

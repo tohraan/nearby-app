@@ -30,6 +30,23 @@ try {
 
 // Create tables
 db.exec(`
+  CREATE TABLE IF NOT EXISTS places (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    category TEXT,
+    sub_category TEXT,
+    lat REAL,
+    lng REAL,
+    rating REAL,
+    review_count INTEGER,
+    address TEXT,
+    price_info TEXT,
+    photos TEXT,
+    opening_hours TEXT,
+    city TEXT,
+    tags TEXT,
+    last_refreshed_at DATETIME DEFAULT (datetime('now'))
+  );
   CREATE TABLE IF NOT EXISTS saves (
     device_id TEXT NOT NULL,
     place_id TEXT NOT NULL,

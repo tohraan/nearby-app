@@ -1,0 +1,10 @@
+frontend/playwright-report
+frontend/test-results
+frontend/tests
+**/node_modules
+**/.DS_Store
+**/*.sqlite
+**/*.sqlite3
+**/*.db
+.env
+.env.*

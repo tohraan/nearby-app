@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
+import Landing from './screens/Landing.jsx';
 import 'leaflet/dist/leaflet.css';
 import './styles/global.css';
 import './styles/components.css';
@@ -15,8 +16,11 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+const path = window.location.pathname;
+const isAppRoute = path.startsWith('/app');
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <App />
+    {isAppRoute ? <App /> : <Landing />}
   </React.StrictMode>,
 );

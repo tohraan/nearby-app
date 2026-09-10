@@ -63,6 +63,7 @@ export default function VenueImage({
           <img
             src={realUrl}
             alt={alt || place?.name || 'Venue'}
+            loading="lazy"
             onLoad={() => setLoading(false)}
             onError={() => {
               setLoading(false);

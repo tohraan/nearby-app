@@ -13,13 +13,14 @@ import {
 import { getCachedPlaceById, getSavedPlaceIds, savePlaceLocally, unsavePlaceLocally, getVisitedPlaceIds, addVisitedPlaceLocally, removeVisitedPlaceLocally } from '../lib/db.js';
 import { api } from '../lib/api.js';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
-import { CATEGORY_EMOJI, formatDistance, haversineKm, getPlaceImage, getActionableUrl, getActionLabel, FOOD_RESERVATION_CATEGORIES, TICKET_CATEGORIES } from '../lib/geo.js';
+import { CATEGORY_EMOJI, formatDistance, isValidDistance, haversineKm, getPlaceImage, getActionableUrl, getActionLabel, FOOD_RESERVATION_CATEGORIES, TICKET_CATEGORIES } from '../lib/geo.js';
 import { useGeolocation } from '../hooks/useGeolocation.js';
 import { queueAction } from '../lib/offlineSync.js';
+import { FALLBACK_PLACES } from '../lib/fallbackData.js';
 import RelatedContent from '../components/RelatedContent.jsx';
 import VenueImage from '../components/VenueImage.jsx';
 
-export default function PlaceDetail({ placeId, onBack, onNavigateToPlace, onNavigateToMeetup, onNavigateToMovie }) {
+export default function PlaceDetail({ placeId, displayMode = 'full', onBack, onNavigateToPlace, onNavigateToMeetup, onNavigateToMovie }) {
   const [place, setPlace] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
@@ -135,26 +136,44 @@ export default function PlaceDetail({ placeId, onBack, onNavigateToPlace, onNavi
       
       {/* ─── 1. BACK TO DISCOVERY BAR ─── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-        <button
-          onClick={onBack}
-          className="neo-btn neo-btn--secondary"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '8px 18px',
-            fontSize: '13px',
-            fontWeight: 900,
-            backgroundColor: 'var(--color-paper)',
-            color: 'var(--color-black)',
-            borderRadius: '24px',
-            border: '2px solid var(--color-black)',
-            boxShadow: '2.5px 2.5px 0 var(--color-black)',
-            cursor: 'pointer'
-          }}
-        >
-          <ChevronLeft size={18} strokeWidth={3} /> BACK TO DISCOVERY
-        </button>
+        {displayMode === 'panel' ? (
+          <button
+            onClick={onBack}
+            className="neo-btn neo-btn--secondary"
+            style={{
+              padding: '6px 12px',
+              fontSize: '12px',
+              fontWeight: 900,
+              borderRadius: '20px',
+              border: '2px solid var(--color-black)',
+              boxShadow: '2px 2px 0 var(--color-black)',
+              cursor: 'pointer'
+            }}
+          >
+            ← Back to top picks
+          </button>
+        ) : (
+          <button
+            onClick={onBack}
+            className="neo-btn neo-btn--secondary"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 18px',
+              fontSize: '13px',
+              fontWeight: 900,
+              backgroundColor: 'var(--color-paper)',
+              color: 'var(--color-black)',
+              borderRadius: '24px',
+              border: '2px solid var(--color-black)',
+              boxShadow: '2.5px 2.5px 0 var(--color-black)',
+              cursor: 'pointer'
+            }}
+          >
+            <ChevronLeft size={18} strokeWidth={3} /> BACK TO DISCOVERY
+          </button>
+        )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <button
@@ -181,8 +200,8 @@ export default function PlaceDetail({ placeId, onBack, onNavigateToPlace, onNavi
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(310px, 1fr))',
-          gap: '24px',
+          gridTemplateColumns: displayMode === 'panel' ? '1fr' : 'repeat(auto-fit, minmax(310px, 1fr))',
+          gap: displayMode === 'panel' ? '16px' : '24px',
           alignItems: 'stretch',
           marginBottom: '28px'
         }}
@@ -196,7 +215,7 @@ export default function PlaceDetail({ placeId, onBack, onNavigateToPlace, onNavi
               border: '3px solid var(--color-black)',
               boxShadow: '6px 6px 0 var(--color-black)',
               overflow: 'hidden',
-              height: '320px',
+              height: displayMode === 'panel' ? '220px' : '320px',
               backgroundColor: 'var(--color-cream)'
             }}
           >
@@ -311,7 +330,7 @@ export default function PlaceDetail({ placeId, onBack, onNavigateToPlace, onNavi
                   boxShadow: '2px 2px 0 var(--color-black)'
                 }}
               >
-                <MapPin size={13} /> {formatDistance(distance)}
+                <MapPin size={13} /> {isValidDistance(distance) ? formatDistance(distance) : '—'}
               </span>
             )}
           </div>
@@ -319,7 +338,7 @@ export default function PlaceDetail({ placeId, onBack, onNavigateToPlace, onNavi
           {/* Dominant Place Name Typography */}
           <h1
             style={{
-              fontSize: 'clamp(32px, 5vw, 44px)',
+              fontSize: displayMode === 'panel' ? 'clamp(26px, 4vw, 32px)' : 'clamp(32px, 5vw, 44px)',
               lineHeight: 1.05,
               fontWeight: 900,
               letterSpacing: '-0.03em',
@@ -357,7 +376,7 @@ export default function PlaceDetail({ placeId, onBack, onNavigateToPlace, onNavi
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '2fr 1fr 1fr',
+          gridTemplateColumns: displayMode === 'panel' ? '1fr' : '2fr 1fr 1fr',
           gap: '12px',
           marginBottom: '28px'
         }}
@@ -630,14 +649,16 @@ export default function PlaceDetail({ placeId, onBack, onNavigateToPlace, onNavi
         </div>
       </div>
 
-"      {/* ─── 5.5 RELATED CONTENT (MEETUPS / MOVIES) ─── */}
-      <RelatedContent 
-        placeId={placeId} 
-        onNavigateToMeetup={onNavigateToMeetup} 
-        onNavigateToMovie={onNavigateToMovie} 
-      />
+      {displayMode === 'full' && (
+        <>
+          {/* ─── 5.5 RELATED CONTENT (MEETUPS / MOVIES) ─── */}
+          <RelatedContent 
+            placeId={placeId} 
+            onNavigateToMeetup={onNavigateToMeetup} 
+            onNavigateToMovie={onNavigateToMovie} 
+          />
 
-      {/* ─── 6. NEARBY PLACES (ITINERARY BUILDER: "SINCE YOU'RE HERE...") ─── */}
+          {/* ─── 6. NEARBY PLACES (ITINERARY BUILDER: "SINCE YOU'RE HERE...") ─── */}
       <div style={{ marginBottom: '32px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
           <div>
@@ -650,7 +671,7 @@ export default function PlaceDetail({ placeId, onBack, onNavigateToPlace, onNavi
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '16px' }}>
           {nearbyRecommendations.map(rec => (
             <div
               key={rec.id}
@@ -724,6 +745,8 @@ export default function PlaceDetail({ placeId, onBack, onNavigateToPlace, onNavi
           ))}
         </div>
       </div>
+      </>
+    )}
 
     </div>
   );

@@ -8,7 +8,7 @@
  * - Max queue size (prevents unbounded growth)
  */
 
-import { getOfflineQueue, clearOfflineQueue, removeFromQueue, enqueueOfflineAction } from './db.js';
+import { getOfflineQueue, removeFromQueue, enqueueOfflineAction } from './db.js';
 import { api } from './api.js';
 
 const MAX_QUEUE_SIZE = 100;
