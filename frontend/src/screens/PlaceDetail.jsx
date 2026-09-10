@@ -50,11 +50,19 @@ export default function PlaceDetail({ placeId, displayMode = 'full', onBack, onN
       setIsVisited(visitedIds.includes(placeId));
       setVisitedCount(visitedIds.length || 1);
 
-      // Load nearby recommendations from cache
+      // Load nearby recommendations from cache — same category first
       try {
         const allCached = await getCachedPlaces();
-        const nearby = allCached.filter(cp => cp.id !== placeId).slice(0, 3);
-        setNearbyPlaces(nearby.length >= 3 ? nearby : FALLBACK_PLACES.filter(fp => fp.id !== placeId).slice(0, 3));
+        const allPlaces = allCached.length >= 3 ? allCached : FALLBACK_PLACES;
+        const currentCategory = p?.category;
+        // Filter by same category, excluding current place
+        const sameCategory = allPlaces
+          .filter(cp => cp.id !== placeId && cp.category === currentCategory);
+        // Fill remainder with different-category places
+        const others = allPlaces
+          .filter(cp => cp.id !== placeId && cp.category !== currentCategory);
+        const combined = [...sameCategory, ...others].slice(0, 3);
+        setNearbyPlaces(combined.length >= 1 ? combined : FALLBACK_PLACES.filter(fp => fp.id !== placeId).slice(0, 3));
       } catch {
         setNearbyPlaces(FALLBACK_PLACES.filter(fp => fp.id !== placeId).slice(0, 3));
       }

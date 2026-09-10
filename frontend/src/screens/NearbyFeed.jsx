@@ -878,7 +878,7 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace, onNav
                   </button>
                 </div>
                 <div className="horizontal-row-track">
-                  {eatDrinkPlaces.slice(0, 8).map(place => (
+                  {eatDrinkPlaces.slice(0, 4).map(place => (
                     <div key={place.id} className="horizontal-row-card-item">
                       {renderPlaceCard(place)}
                     </div>
@@ -899,7 +899,7 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace, onNav
                   </button>
                 </div>
                 <div className="horizontal-row-track">
-                  {attractionPlaces.slice(0, 8).map(place => (
+                  {attractionPlaces.slice(0, 4).map(place => (
                     <div key={place.id} className="horizontal-row-card-item">
                       {renderPlaceCard(place)}
                     </div>
@@ -920,7 +920,7 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace, onNav
                   </button>
                 </div>
                 <div className="horizontal-row-track">
-                  {FALLBACK_MEETUPS.slice(0, 6).map(meetup => (
+                  {FALLBACK_MEETUPS.slice(0, 4).map(meetup => (
                     <div key={meetup.id} className="horizontal-row-card-item">
                       <MeetupCard meetup={meetup} onSelect={() => onNavigateToMeetup?.(meetup.id)} onJoin={() => onNavigateToMeetup?.(meetup.id)} />
                     </div>
@@ -941,7 +941,7 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace, onNav
                   </button>
                 </div>
                 <div className="horizontal-row-track">
-                  {FALLBACK_MOVIES.slice(0, 6).map(movie => (
+                  {FALLBACK_MOVIES.slice(0, 4).map(movie => (
                     <div key={movie.id} className="horizontal-row-card-item">
                       <MovieCard movie={movie} onSelect={() => onNavigateToMovie?.(movie.id)} />
                     </div>
@@ -959,7 +959,7 @@ export default function NearbyFeed({ onNavigateToGroup, onNavigateToPlace, onNav
                   </div>
                 </div>
                 <div className="horizontal-row-track">
-                  {SEEDED_BUNDLES.map(bundle => (
+                  {SEEDED_BUNDLES.slice(0, 4).map(bundle => (
                     <div key={bundle.id} className="horizontal-row-card-item">
                       <BundleCard bundle={bundle} onSelect={(b) => setSelectedBundle(b)} />
                     </div>
